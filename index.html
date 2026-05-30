@@ -514,20 +514,6 @@
         }
       }
 
-      // Clean up garbage entities from Chinese over-extraction
-      const properCnWords = new Set();
-      sentences.forEach(s => {
-        extractChineseWords(s).forEach(w => properCnWords.add(w));
-      });
-      const garbageIds = [];
-      entities.forEach((val, key) => {
-        if (/[\u4e00-\u9fff]/.test(key)) {
-          if (!properCnWords.has(key) && !Object.keys(KNOWN).includes(key)) {
-            garbageIds.push(key);
-          }
-        }
-      });
-
       // Connect isolated entities to root
       const connected = new Set();
       uniqueEdges.forEach(e => { connected.add(e.from); connected.add(e.to); });
