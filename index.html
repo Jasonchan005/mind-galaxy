@@ -171,9 +171,12 @@
     let graphGroup = new THREE.Group();
     scene.add(graphGroup);
     let lastGraphData = { nodes: [], edges: [] };
+    window.lastGraphData = lastGraphData;
+    window.allNodeMeshes = [];         // Exposed for testing
+    window.renderer = renderer;
     
     // ─── Interactive Sphere-in-Sphere ──────────────────────
-    let allNodeMeshes = [];         // All clickable sphere meshes
+    let allNodeMeshes = window.allNodeMeshes;
     let allNodeData = new Map();    // nodeId -> { mesh, label, pos, data }
     let expandedNodeId = null;      // Currently expanded node
     let childNodes = [];            // Temporary child meshes when expanded
@@ -603,6 +606,7 @@
 
       const { nodes, edges } = extractGraph(text);
       lastGraphData = { nodes, edges };
+      window.lastGraphData = lastGraphData;
       
       // ─── Pure Sphere Layout ───────────────────────────────
       // All nodes evenly distributed on a sphere surface
