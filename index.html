@@ -487,6 +487,64 @@
       const connected = new Set();
       uniqueEdges.forEach(e => { connected.add(e.from); connected.add(e.to); });
       entities.forEach(e => { if (!connected.has(e.id)) uniqueEdges.push({ from: 'root', to: e.id, label: '' }); });
+      
+      // ─── Smart parent-child detection ─────────────────────
+      // Detect entities with numeric suffixes (陈一,陈二...陈五 → child of 陈)
+      // Detect entities sharing a common prefix (iPhone 15, iPhone 16 → child of iPhone)
+      const parentChildEdges = [];
+      const entityIds = [...entities.keys()];
+      
+      // Chinese: detect 姓氏 + 数字/排行 patterns
+      const cnParentPattern = /^([\u4e00-\u9fff])([一二三四五六七八九十\d])$/;
+      const parentCandidates = new Map();
+      
+      for (const eid of entityIds) {
+        const match = eid.match(cnParentPattern);
+        if (match) {
+          const parentName = match[1];
+          const childNum = match[2];
+          if (entities.has(parentName)) {
+            parentCandidates.set(parentName, parentCandidates.get(parentName) || []);
+            parentCandidates.get(parentName).push({ id: eid, num: childNum });
+          }
+        }
+      }
+      
+      // Add parent-child edges
+      parentCandidates.forEach((children, parent) => {
+        children.forEach(child => {
+          parentChildEdges.push({ from: parent, to: child.id, label: '儿子' });
+        });
+      });
+      
+      // English: detect numbered entities (iPhone 15, iPhone 16 → child of iPhone)
+      const enParentPattern = /^(.+?)\s+(\d+)$/;
+      const enParents = new Map();
+      for (const eid of entityIds) {
+        const match = eid.match(enParentPattern);
+        if (match) {
+          const base = match[1];
+          if (entities.has(base)) {
+            enParents.set(base, enParents.get(base) || []);
+            enParents.get(base).push({ id: eid });
+          }
+        }
+      }
+      
+      enParents.forEach((children, parent) => {
+        children.forEach(child => {
+          parentChildEdges.push({ from: parent, to: child.id, label: 'version' });
+        });
+      });
+      
+      // Merge parent-child edges (avoid duplicates)
+      for (const pce of parentChildEdges) {
+        const key = pce.from + '|' + pce.to;
+        if (!edgeSet.has(key)) {
+          edgeSet.add(key);
+          uniqueEdges.push(pce);
+        }
+      }
 
       return {
         nodes: [{ id: 'root', label: '📄 Source', color: '#7c3aed' }, ...entities.values()],
