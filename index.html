@@ -69,6 +69,22 @@
     #nodeEditor .actions .add-child { background: rgba(34,197,94,0.2); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); }
     #nodeEditor .actions .add-child:hover { background: rgba(34,197,94,0.3); }
     
+    /* ─── Export Modal ────────────────────────────────────── */
+    #exportModal { position: fixed; display: none; z-index: 70; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center; }
+    #exportModal.show { display: flex; }
+    #exportModal .modal { background: rgba(15,23,42,0.98); border: 1px solid #334155; border-radius: 16px; padding: 24px; min-width: 300px; max-width: 400px; }
+    #exportModal h3 { font-size: 16px; margin-bottom: 16px; color: #e2e8f0; }
+    #exportModal .formats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+    #exportModal .format-btn { padding: 14px; border: 1px solid #334155; border-radius: 10px; background: rgba(30,41,59,0.5); color: #94a3b8; font-size: 13px; cursor: pointer; text-align: center; font-weight: 500; }
+    #exportModal .format-btn:hover { border-color: #7c3aed; color: #a78bfa; }
+    #exportModal .format-btn.active { border-color: #7c3aed; background: rgba(124,58,237,0.15); color: #a78bfa; }
+    #exportModal .export-actions { display: flex; gap: 8px; }
+    #exportModal .export-actions button { flex: 1; padding: 10px; border-radius: 8px; border: none; font-size: 13px; cursor: pointer; font-weight: 600; }
+    #exportModal .export-actions .do-export { background: #7c3aed; color: white; }
+    #exportModal .export-actions .do-export:hover { background: #6d28d9; }
+    #exportModal .export-actions .cancel { background: #1e293b; border: 1px solid #334155; color: #94a3b8; }
+    #exportModal .export-actions .cancel:hover { border-color: #64748b; }
+    
     .tagline { position: fixed; bottom: 4px; right: 12px; font-size: 10px; color: #334155; z-index: 15; }
   </style>
 </head>
@@ -78,7 +94,7 @@
     <h1>🌌 Mind-Galaxy</h1>
     <div class="header-actions">
       <button onclick="toggleView()" id="viewToggle">🌐 3D View</button>
-      <button onclick="exportImage()">📷 Export</button>
+      <button onclick="showExportModal()">📥 Export</button>
     </div>
   </div>
 
@@ -109,6 +125,23 @@
       <button class="save" onclick="saveNodeEdit()">Save</button>
       <button class="add-child" onclick="addChildFromEditor()">+ Child</button>
       <button class="delete" onclick="deleteNodeEdit()">Delete</button>
+    </div>
+  </div>
+
+  <!-- Export Modal -->
+  <div id="exportModal">
+    <div class="modal">
+      <h3>📥 Export Mind Map</h3>
+      <div class="formats" id="exportFormats">
+        <div class="format-btn active" data-format="png" onclick="selectFormat('png')">🖼️ PNG Image</div>
+        <div class="format-btn" data-format="jpg" onclick="selectFormat('jpg')">🖼️ JPG Image</div>
+        <div class="format-btn" data-format="pdf" onclick="selectFormat('pdf')">📄 PDF Document</div>
+        <div class="format-btn" data-format="docx" onclick="selectFormat('docx')">📝 Word Document</div>
+      </div>
+      <div class="export-actions">
+        <button class="do-export" onclick="doExport()">Download</button>
+        <button class="cancel" onclick="hideExportModal()">Cancel</button>
+      </div>
     </div>
   </div>
 
@@ -414,12 +447,106 @@
     };
     
     // ─── Export ─────────────────────────────────────────────
-    window.exportImage = function() {
+    let exportFormat = 'png';
+    
+    window.showExportModal = function() {
+      document.getElementById('exportModal').classList.add('show');
+    };
+    window.hideExportModal = function() {
+      document.getElementById('exportModal').classList.remove('show');
+    };
+    window.selectFormat = function(fmt) {
+      exportFormat = fmt;
+      document.querySelectorAll('.format-btn').forEach(b => b.classList.toggle('active', b.dataset.format === fmt));
+    };
+    
+    window.doExport = function() {
+      hideExportModal();
+      
+      if (exportFormat === 'png') {
+        const link = document.createElement('a');
+        link.download = 'mind-galaxy.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      } else if (exportFormat === 'jpg') {
+        const link = document.createElement('a');
+        link.download = 'mind-galaxy.jpg';
+        link.href = canvas.toDataURL('image/jpeg', 0.95);
+        link.click();
+      } else if (exportFormat === 'pdf') {
+        exportPDF();
+      } else if (exportFormat === 'docx') {
+        exportDocx();
+      }
+      trackEvent('export_' + exportFormat, { tool: 'mindgalaxy' });
+    };
+    
+    function exportPDF() {
+      // Use canvas to PDF via window print or jsPDF
+      const imgData = canvas.toDataURL('image/png');
+      const win = window.open('', '_blank');
+      win.document.write(`
+        <html><head><title>Mind-Galaxy</title>
+        <style>body{margin:0;display:flex;justify-content:center;align-items:center;height:100vh;}img{max-width:100%;max-height:100%;}</style>
+        </head><body><img src="${imgData}" onload="window.print()"></body></html>
+      `);
+      win.document.close();
+    }
+    
+    function exportDocx() {
+      // Generate DOCX using a simple HTML-to-DOCX approach
+      const treeText = flattenTree(treeData, 0);
+      const html = `<html xmlns:o='urn:schemas-microsoft-com:office:office' 
+        xmlns:w='urn:schemas-microsoft-com:office:word' 
+        xmlns='http://www.w3.org/TR/REC-html40'>
+        <head><meta charset="utf-8"><title>Mind-Galaxy</title>
+        <style>body{font-family:Inter,sans-serif;padding:20px;}
+        h1{color:#7c3aed;font-size:18px;}
+        .level0{margin-left:0;font-weight:bold;font-size:16px;margin-top:16px;}
+        .level1{margin-left:24px;font-size:14px;margin-top:8px;}
+        .level2{margin-left:48px;font-size:13px;margin-top:4px;color:#555;}
+        .level3{margin-left:72px;font-size:12px;margin-top:4px;color:#777;}
+        .rel{color:#7c3aed;font-size:11px;margin-left:24px;}
+        </style></head><body>
+        <h1>🌌 Mind-Galaxy Mind Map</h1>
+        ${treeText}
+        <p style="margin-top:40px;color:#999;font-size:10px;">Generated by Mind-Galaxy</p>
+        </body></html>`;
+      
+      const blob = new Blob([html], { type: 'application/msword' });
+      const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.download = 'mind-galaxy.png';
-      link.href = canvas.toDataURL('image/png');
+      link.download = 'mind-galaxy.doc';
+      link.href = url;
       link.click();
-      trackEvent('export', { tool: 'mindgalaxy' });
+      URL.revokeObjectURL(url);
+    }
+    
+    function flattenTree(node, level) {
+      if (!node || node.id === 'root' && level === 0) {
+        let html = '';
+        if (node.children) {
+          node.children.forEach(child => {
+            html += flattenTree(child, level + 1);
+          });
+        }
+        return html;
+      }
+      
+      let html = `<div class="level${Math.min(level, 3)}">• ${node.label}</div>`;
+      if (node.relation) {
+        html += `<div class="rel">↳ ${node.relation}</div>`;
+      }
+      if (node.children && node.expanded !== false) {
+        node.children.forEach(child => {
+          html += flattenTree(child, level + 1);
+        });
+      }
+      return html;
+    }
+    
+    window.exportImage = function() {
+      showExportModal();
     };
     
     // ─── AI Generation ──────────────────────────────────────
