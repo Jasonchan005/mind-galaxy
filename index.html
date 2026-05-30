@@ -423,7 +423,41 @@
 
       for (const sentence of sentences) {
         const trimmed = sentence.trim();
-        const words = trimmed.split(/[\s,，、]+/).filter(w => w.length > 0);
+        // Chinese text needs character-level segmentation
+        // Split on: spaces, commas, punctuation, or transitions between known entities
+        let words = trimmed.split(/[\s,，、；;：:！!？?]+/).filter(w => w.length > 0);
+        
+        // If no spaces found (pure Chinese), segment by known entities
+        if (words.length <= 1 && /[\u4e00-\u9fff]/.test(trimmed)) {
+          // Find known entities in the text and use them as anchors
+          const foundEntities = Object.keys(KNOWN).filter(k => trimmed.includes(k));
+          if (foundEntities.length > 0) {
+            // Build words from entities + remaining text
+            const newWords = [];
+            let remaining = trimmed;
+            foundEntities.sort((a, b) => b.length - a.length); // longer first
+            while (remaining.length > 0) {
+              let matched = false;
+              for (const ent of foundEntities) {
+                if (remaining.startsWith(ent)) {
+                  newWords.push(ent);
+                  remaining = remaining.substring(ent.length);
+                  matched = true;
+                  break;
+                }
+              }
+              if (!matched) {
+                // Take one character at a time
+                newWords.push(remaining[0]);
+                remaining = remaining.substring(1);
+              }
+            }
+            words = newWords;
+          } else {
+            // No known entities — split by individual characters
+            words = trimmed.split('');
+          }
+        }
         
         // Try to find verb and its neighbors
         for (let i = 0; i < words.length; i++) {
