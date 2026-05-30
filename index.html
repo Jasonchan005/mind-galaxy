@@ -88,7 +88,7 @@
       <div id="tab-text">
         <textarea id="inputText" placeholder="Paste any text — news, article, story...">Elon Musk announced Tesla's new self-driving system. Tesla shares rose 5% after the announcement. Competitors like Waymo and Cruise are also developing autonomous driving technology.</textarea>
         <div class="input-row">
-          <button onclick="generateGraph()">🚀 Generate Graph</button>
+          <button id="generateBtn" onclick="generateGraph()">🚀 Generate Graph</button>
           <div class="examples">
             <span style="color:#475569;font-size:11px;">Try:</span>
             <button class="example-btn" onclick="loadExample(1)">Tesla</button>
@@ -185,45 +185,112 @@
       'Model 3': '#f59e0b', 'iPhone': '#a855f7', 'Android': '#22c55e',
     };
 
-    const VERBS = ['发布','推出','收购','投资','合作','竞争','反对','支持','宣布','降价','涨价','起诉','辞职','当选','任命','研发'];
+    const VERBS = ['发布','推出','收购','投资','合作','竞争','反对','支持','宣布','降价','涨价','起诉','辞职','当选','任命','研发','launch','acquire','invest','partner','compete','announce','cut','raise','sue','resign','elect','appoint'];
 
-    // Smart entity extraction — handles any text, not just KNOWN dictionary
-    function extractEntities(text) {
-      // First check KNOWN dictionary
-      const found = Object.keys(KNOWN).filter(k => text.includes(k));
-      
-      // If KNOWN found nothing, use generic extraction
-      if (found.length === 0) {
-        // Extract capitalized words (English) or 2-4 char Chinese words
-        const enWords = text.match(/\b[A-Z][a-z]+\b/g) || [];
-        const cnWords = text.match(/[\u4e00-\u9fff]{2,4}/g) || [];
-        
-        // Filter common words
-        const stopWords = ['this','that','with','from','they','have','been','will','their','about','would','could','should','after','before','between','没有','什么','可以','一个','这个','那个','我们','他们','你们','因为','所以','但是','如果','虽然','而且','或者','还是','不是','就是','只是','但是','已经','还是','可以','所有','一些','这些','那些','每个','很多'];
-        
-        const all = [...new Set([...enWords, ...cnWords])].filter(w => !stopWords.includes(w) && w.length > 1);
-        
-        if (all.length > 0) {
-          const colors = ['#f59e0b','#22c55e','#3b82f6','#a855f7','#ef4444','#06b6d4','#ec4899','#14b8a6'];
-          return all.slice(0, 8).map((w, i) => ({
-            id: w, label: w, color: colors[i % colors.length]
-          }));
+    // ─── AI-Powered Entity Extraction via Hugging Face ────
+    // Uses free inference API — no API key needed (rate limited)
+    const HF_API = 'https://api-inference.huggingface.co/models/';
+    
+    // NER model for entity extraction
+    async function extractWithHF(text) {
+      // Try English NER model first
+      try {
+        const resp = await fetch(HF_API + 'dslim/bert-base-NER', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ inputs: text.substring(0, 1000) }),
+          signal: AbortSignal.timeout(10000)
+        });
+        if (!resp.ok) throw new Error('HF API error');
+        const data = await resp.json();
+        return data;
+      } catch(e) {
+        // Fallback to zero-shot classification
+        try {
+          const resp = await fetch(HF_API + 'facebook/bart-large-mnli', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              inputs: text.substring(0, 500),
+              parameters: { candidate_labels: ['person', 'organization', 'product', 'event', 'technology', 'country', 'brand', 'concept'] }
+            }),
+            signal: AbortSignal.timeout(10000)
+          });
+          if (!resp.ok) throw new Error('HF fallback error');
+          return await resp.json();
+        } catch(e2) {
+          return null;
         }
       }
+    }
+
+    // Extract entities using Hugging Face + fallback
+    async function extractEntities(text) {
+      const hfResult = await extractWithHF(text);
       
-      return found.map(name => ({ id: name, label: name, color: KNOWN[name] }));
+      if (hfResult && Array.isArray(hfResult)) {
+        // NER model returned entity tags
+        const entities = [];
+        const seen = new Set();
+        const colors = ['#f59e0b','#22c55e','#3b82f6','#a855f7','#ef4444','#06b6d4','#ec4899','#14b8a6'];
+        
+        for (const item of hfResult) {
+          const word = item.word || item.entity_group || '';
+          const clean = word.replace(/[#\u2581]/g, '').trim();
+          if (clean.length > 1 && !seen.has(clean.toLowerCase())) {
+            seen.add(clean.toLowerCase());
+            const color = item.entity_group === 'PER' || item.entity_group === 'person' ? '#ef4444' :
+                          item.entity_group === 'ORG' || item.entity_group === 'organization' ? '#3b82f6' :
+                          item.entity_group === 'LOC' || item.entity_group === 'location' ? '#22c55e' :
+                          item.entity_group === 'MISC' ? '#a855f7' : colors[entities.length % colors.length];
+            entities.push({ id: clean, label: clean, color });
+          }
+        }
+        if (entities.length >= 2) return entities.slice(0, 12);
+      }
+      
+      if (hfResult && hfResult.labels) {
+        // Zero-shot classification result
+        return hfResult.labels.slice(0, 6).map((label, i) => {
+          const colors = ['#f59e0b','#22c55e','#3b82f6','#a855f7','#ef4444','#06b6d4'];
+          return { id: label, label, color: colors[i] };
+        });
+      }
+      
+      // Final fallback: regex extraction
+      return fallbackExtract(text);
+    }
+
+    function fallbackExtract(text) {
+      // Try KNOWN dictionary
+      const found = Object.keys(KNOWN).filter(k => text.includes(k));
+      if (found.length > 0) {
+        return found.map(name => ({ id: name, label: name, color: KNOWN[name] }));
+      }
+      
+      // Regex fallback
+      const enWords = text.match(/\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)*\b/g) || [];
+      const cnWords = text.match(/[\u4e00-\u9fff]{2,4}/g) || [];
+      const stopWords = ['this','that','with','from','they','have','been','will','their','about','would','could','should','after','before','between','没有','什么','可以','一个','这个','那个','我们','他们','你们','因为','所以','但是','如果'];
+      const all = [...new Set([...enWords, ...cnWords])].filter(w => !stopWords.includes(w) && w.length > 1);
+      
+      if (all.length > 0) {
+        const colors = ['#f59e0b','#22c55e','#3b82f6','#a855f7','#ef4444','#06b6d4'];
+        return all.slice(0, 8).map((w, i) => ({ id: w, label: w, color: colors[i % colors.length] }));
+      }
+      
+      return [];
     }
 
     function extractRelations(text, entities) {
       const edges = [];
       const entityIds = entities.map(e => e.id);
       
-      // Find verbs between entities
       VERBS.forEach(v => {
         let idx = text.indexOf(v);
         while (idx !== -1) {
-          const before = text.substring(Math.max(0, idx - 30), idx);
-          const after = text.substring(idx + v.length, idx + v.length + 30);
+          const before = text.substring(Math.max(0, idx - 40), idx);
+          const after = text.substring(idx + v.length, idx + v.length + 40);
           const subj = entityIds.find(e => before.includes(e));
           const obj = entityIds.find(e => after.includes(e));
           if (subj && obj && subj !== obj) {
@@ -235,34 +302,39 @@
         }
       });
       
-      // If no verb-based relations found, connect entities to root
       if (edges.length === 0 && entities.length > 0) {
-        entities.forEach(e => {
-          edges.push({ from: 'root', to: e.id });
-        });
+        entities.forEach(e => edges.push({ from: 'root', to: e.id }));
       }
       
       return edges;
     }
 
-    function extractGraph(text) {
-      const entities = extractEntities(text);
+    async function extractGraph(text) {
+      const entities = await extractEntities(text);
       const edges = extractRelations(text, entities);
       const nodes = [{ id: 'root', label: '📄 Source', color: '#7c3aed' }, ...entities];
       return { nodes, edges };
     }
 
-    window.generateGraph = function() {
+    window.generateGraph = async function() {
       const text = document.getElementById('inputText').value.trim();
       if (!text) return;
-      generateFromText(text);
+      
+      // Show loading state
+      document.getElementById('generateBtn').textContent = '⏳ Analyzing...';
+      document.getElementById('generateBtn').disabled = true;
+      
+      await generateFromText(text);
+      
+      document.getElementById('generateBtn').textContent = '🚀 Generate Graph';
+      document.getElementById('generateBtn').disabled = false;
       trackEvent('generate', { source: 'text', tool: 'galaxymind' });
     };
 
-    function generateFromText(text) {
+    async function generateFromText(text) {
       while(graphGroup.children.length) graphGroup.remove(graphGroup.children[0]);
 
-      const { nodes, edges } = extractGraph(text);
+      const { nodes, edges } = await extractGraph(text);
       const nodeMap = {};
       const positions = [];
       const sphereRadius = 6;
