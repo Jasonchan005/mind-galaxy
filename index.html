@@ -596,6 +596,7 @@
         edges: uniqueEdges
       };
     }
+    window.extractGraph = extractGraph; // Expose for testing
 
     window.generateGraph = function() {
       const text = document.getElementById('inputText').value.trim();
