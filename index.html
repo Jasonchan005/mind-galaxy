@@ -170,6 +170,203 @@
 
     let graphGroup = new THREE.Group();
     scene.add(graphGroup);
+    let lastGraphData = { nodes: [], edges: [] };
+    
+    // ─── Interactive Sphere-in-Sphere ──────────────────────
+    let allNodeMeshes = [];         // All clickable sphere meshes
+    let allNodeData = new Map();    // nodeId -> { mesh, label, pos, data }
+    let expandedNodeId = null;      // Currently expanded node
+    let childNodes = [];            // Temporary child meshes when expanded
+    let childLabels = [];           // Temporary child labels
+    let childEdges = [];            // Temporary child edges
+    let childParticles = [];
+    let animating = false;
+    
+    // Raycaster for click detection
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    
+    renderer.domElement.addEventListener('click', onClickCanvas);
+    renderer.domElement.addEventListener('touchstart', (e) => {
+      if (e.changedTouches.length > 0) {
+        const touch = e.changedTouches[0];
+        pointer.x = (touch.clientX / window.innerWidth) * 2 - 1;
+        pointer.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+        checkClick();
+      }
+    });
+    
+    function onClickCanvas(event) {
+      pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+      pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+      checkClick();
+    }
+    
+    function checkClick() {
+      if (animating) return;
+      raycaster.setFromCamera(pointer, camera);
+      
+      // Check clicks on all node meshes
+      const intersects = raycaster.intersectObjects(allNodeMeshes);
+      
+      if (intersects.length > 0) {
+        const hit = intersects[0].object;
+        const nodeId = hit.userData.nodeId;
+        if (nodeId && nodeId !== 'root') {
+          toggleExpand(nodeId);
+          return;
+        }
+      }
+      
+      // Click on empty space — collapse
+      if (expandedNodeId) {
+        collapseAll();
+      }
+    }
+    
+    function toggleExpand(nodeId) {
+      if (expandedNodeId === nodeId) {
+        collapseAll();
+      } else {
+        expandNode(nodeId);
+      }
+    }
+    
+    function expandNode(nodeId) {
+      if (expandedNodeId) collapseAll();
+      expandedNodeId = nodeId;
+      animating = true;
+      
+      const nodeInfo = allNodeData.get(nodeId);
+      if (!nodeInfo) { animating = false; return; }
+      
+      // Find children (entities connected to this node)
+      const { edges } = lastGraphData;
+      const children = edges.filter(e => 
+        (e.from === nodeId || e.to === nodeId) && e.from !== 'root' && e.to !== 'root'
+      );
+      
+      if (children.length === 0) { animating = false; return; }
+      
+      const parentPos = nodeInfo.pos;
+      const color = new THREE.Color(nodeInfo.color || '#7c3aed');
+      
+      // Hide the original node and its label
+      nodeInfo.mesh.visible = false;
+      nodeInfo.label.visible = false;
+      nodeInfo.ring.visible = false;
+      
+      // Collect child IDs
+      const childIds = [];
+      children.forEach(e => {
+        const cid = e.from === nodeId ? e.to : e.from;
+        if (!childIds.includes(cid)) childIds.push(cid);
+      });
+      
+      const childRadius = 2.0;
+      const goldenRatio = (1 + Math.sqrt(5)) / 2;
+      
+      childIds.forEach((cid, i) => {
+        const childInfo = allNodeData.get(cid);
+        if (!childInfo) return;
+        
+        // Hide original child
+        childInfo.mesh.visible = false;
+        childInfo.label.visible = false;
+        
+        // Position on a small sphere around parent
+        const theta = 2 * Math.PI * i / goldenRatio;
+        const phi = Math.acos(1 - 2 * (i + 0.5) / childIds.length);
+        const targetPos = new THREE.Vector3(
+          parentPos.x + childRadius * Math.sin(phi) * Math.cos(theta),
+          parentPos.y + childRadius * Math.sin(phi) * Math.sin(theta),
+          parentPos.z + childRadius * Math.cos(phi)
+        );
+        
+        // Create child sphere
+        const childMesh = new THREE.Mesh(
+          new THREE.SphereGeometry(0.12, 8, 8),
+          new THREE.MeshPhongMaterial({ color: new THREE.Color(childInfo.color || '#22c55e'), emissive: new THREE.Color(childInfo.color || '#22c55e'), emissiveIntensity: 0.6 })
+        );
+        childMesh.position.copy(parentPos);
+        childMesh.userData = { targetPos: targetPos.clone(), startPos: parentPos.clone(), t: 0 };
+        graphGroup.add(childMesh);
+        childNodes.push(childMesh);
+        
+        // Child label
+        const div = document.createElement('div');
+        div.textContent = childInfo.labelText;
+        div.style.cssText = 'color:#cbd5e1;font-size:10px;font-weight:500;text-shadow:0 0 8px rgba(0,0,0,0.9);background:rgba(0,0,0,0.4);padding:2px 5px;border-radius:4px;pointer-events:none;';
+        const label = new CSS2DObject(div);
+        label.position.copy(parentPos);
+        graphGroup.add(label);
+        childLabels.push(label);
+        
+        // Edge from parent to child
+        const mid = new THREE.Vector3().addVectors(parentPos, targetPos).multiplyScalar(0.5);
+        const curve = new THREE.QuadraticBezierCurve3(parentPos.clone(), mid, targetPos.clone());
+        const line = new THREE.Line(
+          new THREE.BufferGeometry().setFromPoints(curve.getPoints(15)),
+          new THREE.LineBasicMaterial({ color: 0x7c3aed, transparent: true, opacity: 0.3 })
+        );
+        graphGroup.add(line);
+        childEdges.push(line);
+        
+        // Particle
+        const particle = new THREE.Mesh(
+          new THREE.SphereGeometry(0.06, 4, 4),
+          new THREE.MeshBasicMaterial({ color: 0xc4b5fd, transparent: true, opacity: 0.7 })
+        );
+        const c = curve.clone();
+        particle.userData = { curve: c, t: Math.random(), speed: 0.004 };
+        particle.position.copy(c.getPoint(particle.userData.t));
+        graphGroup.add(particle);
+        childParticles.push(particle);
+        
+        // Edge label
+        const edgeLabel = children.find(e => 
+          (e.from === nodeId && e.to === cid) || (e.to === nodeId && e.from === cid)
+        )?.label || 'related';
+        
+        if (edgeLabel) {
+          const cm = curve.getPoint(0.5);
+          const d = document.createElement('div');
+          d.textContent = edgeLabel;
+          d.style.cssText = 'color:#c4b5fd;font-size:9px;font-weight:500;background:rgba(15,15,35,0.8);padding:1px 5px;border-radius:3px;border:1px solid rgba(167,139,250,0.2);';
+          const l = new CSS2DObject(d);
+          l.position.copy(cm);
+          graphGroup.add(l);
+          childLabels.push(l);
+        }
+      });
+      
+      setTimeout(() => { animating = false; }, 600);
+    }
+    
+    function collapseAll() {
+      if (!expandedNodeId) return;
+      animating = true;
+      
+      // Restore original nodes
+      allNodeData.forEach((info, id) => {
+        if (info.mesh) info.mesh.visible = true;
+        if (info.label) info.label.visible = true;
+        if (info.ring) info.ring.visible = true;
+      });
+      
+      // Remove temporary children
+      childNodes.forEach(m => graphGroup.remove(m));
+      childLabels.forEach(l => graphGroup.remove(l));
+      childEdges.forEach(e => graphGroup.remove(e));
+      childParticles.forEach(p => graphGroup.remove(p));
+      childNodes = [];
+      childLabels = [];
+      childEdges = [];
+      childParticles = [];
+      
+      expandedNodeId = null;
+      setTimeout(() => { animating = false; }, 300);
+    }
 
     const KNOWN = {
       '特斯拉': '#f59e0b', '比亚迪': '#22c55e', '马斯克': '#ef4444',
@@ -305,9 +502,14 @@
     };
 
     function generateFromText(text) {
+      // Clean up any expanded state
+      collapseAll();
       while(graphGroup.children.length) graphGroup.remove(graphGroup.children[0]);
+      allNodeMeshes = [];
+      allNodeData = new Map();
 
       const { nodes, edges } = extractGraph(text);
+      lastGraphData = { nodes, edges };
       
       // ─── Pure Sphere Layout ───────────────────────────────
       // All nodes evenly distributed on a sphere surface
@@ -359,7 +561,9 @@
           new THREE.MeshPhongMaterial({ color, emissive: color, emissiveIntensity: 0.8 })
         );
         dot.position.set(pos.x, pos.y, pos.z);
+        dot.userData.nodeId = n.id;
         graphGroup.add(dot);
+        allNodeMeshes.push(dot);
 
         const div = document.createElement('div');
         div.textContent = n.label;
@@ -367,6 +571,22 @@
         const label = new CSS2DObject(div);
         label.position.set(pos.x, pos.y - 0.5, pos.z);
         graphGroup.add(label);
+        
+        // Store for click interaction
+        const ringMesh = new THREE.Mesh(
+          new THREE.SphereGeometry((n.id === 'root' ? 0.3 : 0.15) * 3, 8, 8),
+          new THREE.MeshBasicMaterial({ color, wireframe: true, transparent: true, opacity: 0.08 })
+        );
+        ringMesh.position.set(pos.x, pos.y, pos.z);
+        graphGroup.add(ringMesh);
+        
+        allNodeData.set(n.id, { 
+          mesh: dot, label, ring: ringMesh, 
+          pos, color: n.color, labelText: n.label,
+          // Store connected children info
+          children: edges.filter(e => (e.from === n.id || e.to === n.id) && e.from !== 'root' && e.to !== 'root')
+            .map(e => ({ id: e.from === n.id ? e.to : e.from, label: e.label }))
+        });
       });
 
       // Draw edges — arcs through sphere with verb labels
