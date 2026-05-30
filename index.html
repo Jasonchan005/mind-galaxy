@@ -185,135 +185,133 @@
       'Model 3': '#f59e0b', 'iPhone': '#a855f7', 'Android': '#22c55e',
     };
 
-    const VERBS = ['发布','推出','收购','投资','合作','竞争','反对','支持','宣布','降价','涨价','起诉','辞职','当选','任命','研发','launch','acquire','invest','partner','compete','announce','cut','raise','sue','resign','elect','appoint'];
+    const VERBS = ['发布','推出','收购','投资','合作','竞争','反对','支持','宣布','降价','涨价','起诉','辞职','当选','任命','研发','launch','acquire','invest','partner','compete','announce','cut','raise','sue','resign','elect','appoint','develop','create','build','lead','manage','join','leave','approve','reject','propose'];
 
-    // ─── AI-Powered Entity Extraction via Hugging Face ────
-    // Uses free inference API — no API key needed (rate limited)
-    const HF_API = 'https://api-inference.huggingface.co/models/';
+    // ─── Smart Entity & Relation Extraction ─────────────────
+    // Uses Hugging Face zero-shot classification to identify key topics,
+    // then finds meaningful noun phrases in the text.
     
-    // NER model for entity extraction
-    async function extractWithHF(text) {
-      // Try English NER model first
+    // Call Hugging Face zero-shot to get the main themes
+    async function extractKeyThemes(text) {
       try {
-        const resp = await fetch(HF_API + 'dslim/bert-base-NER', {
+        const resp = await fetch('https://api-inference.huggingface.co/models/facebook/bart-large-mnli', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ inputs: text.substring(0, 1000) }),
+          body: JSON.stringify({
+            inputs: text.substring(0, 800),
+            parameters: {
+              candidate_labels: [
+                'business', 'technology', 'politics', 'science', 'sports',
+                'company', 'product launch', 'investment', 'acquisition',
+                'competition', 'innovation', 'regulation', 'economy',
+                'climate', 'health', 'education', 'entertainment'
+              ]
+            }
+          }),
           signal: AbortSignal.timeout(10000)
         });
-        if (!resp.ok) throw new Error('HF API error');
-        const data = await resp.json();
-        return data;
+        if (!resp.ok) throw new Error('HF error: ' + resp.status);
+        return await resp.json();
       } catch(e) {
-        // Fallback to zero-shot classification
-        try {
-          const resp = await fetch(HF_API + 'facebook/bart-large-mnli', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              inputs: text.substring(0, 500),
-              parameters: { candidate_labels: ['person', 'organization', 'product', 'event', 'technology', 'country', 'brand', 'concept'] }
-            }),
-            signal: AbortSignal.timeout(10000)
-          });
-          if (!resp.ok) throw new Error('HF fallback error');
-          return await resp.json();
-        } catch(e2) {
-          return null;
-        }
+        return null;
       }
     }
 
-    // Extract entities using Hugging Face + fallback
-    async function extractEntities(text) {
-      const hfResult = await extractWithHF(text);
-      
-      if (hfResult && Array.isArray(hfResult)) {
-        // NER model returned entity tags
-        const entities = [];
-        const seen = new Set();
-        const colors = ['#f59e0b','#22c55e','#3b82f6','#a855f7','#ef4444','#06b6d4','#ec4899','#14b8a6'];
-        
-        for (const item of hfResult) {
-          const word = item.word || item.entity_group || '';
-          const clean = word.replace(/[#\u2581]/g, '').trim();
-          if (clean.length > 1 && !seen.has(clean.toLowerCase())) {
+    // Extract meaningful entities using linguistics + statistics
+    function extractEntitiesSmart(text) {
+      const entities = [];
+      const seen = new Set();
+      const colors = ['#f59e0b','#22c55e','#3b82f6','#a855f7','#ef4444','#06b6d4','#ec4899','#14b8a6'];
+
+      // 1. Extract proper nouns (Capitalized multi-word phrases in English)
+      const properNouns = text.match(/\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)*/g) || [];
+      for (const pn of properNouns) {
+        const clean = pn.trim();
+        if (clean.length > 2 && !seen.has(clean.toLowerCase())) {
+          // Filter out sentence-starting words (likely not proper nouns)
+          const firstWords = text.split(/[.!?\n]/).map(s => s.trim().split(/\s/)[0]).filter(Boolean);
+          if (!firstWords.includes(clean) || clean.length > 5) {
             seen.add(clean.toLowerCase());
-            const color = item.entity_group === 'PER' || item.entity_group === 'person' ? '#ef4444' :
-                          item.entity_group === 'ORG' || item.entity_group === 'organization' ? '#3b82f6' :
-                          item.entity_group === 'LOC' || item.entity_group === 'location' ? '#22c55e' :
-                          item.entity_group === 'MISC' ? '#a855f7' : colors[entities.length % colors.length];
-            entities.push({ id: clean, label: clean, color });
+            entities.push({ id: clean, label: clean, color: colors[entities.length % colors.length] });
           }
         }
-        if (entities.length >= 2) return entities.slice(0, 12);
       }
-      
-      if (hfResult && hfResult.labels) {
-        // Zero-shot classification result
-        return hfResult.labels.slice(0, 6).map((label, i) => {
-          const colors = ['#f59e0b','#22c55e','#3b82f6','#a855f7','#ef4444','#06b6d4'];
-          return { id: label, label, color: colors[i] };
-        });
-      }
-      
-      // Final fallback: regex extraction
-      return fallbackExtract(text);
-    }
 
-    function fallbackExtract(text) {
-      // Try KNOWN dictionary
-      const found = Object.keys(KNOWN).filter(k => text.includes(k));
-      if (found.length > 0) {
-        return found.map(name => ({ id: name, label: name, color: KNOWN[name] }));
+      // 2. Extract Chinese entities (2-4 char meaningful words)
+      const cnEntities = text.match(/[\u4e00-\u9fff]{2,4}/g) || [];
+      const cnStopWords = new Set(['没有','什么','可以','一个','这个','那个','我们','他们','你们','因为','所以','但是','如果','虽然','而且','或者','还是','不是','就是','只是','已经','所有','一些','这些','那些','每个','很多','怎么','自己','知道','看到','觉得','开始','最后','还有','之后','然后','这里','那里','时候','为什么','这样','那样','通过','可能','应该']);
+      for (const cn of cnEntities) {
+        if (!cnStopWords.has(cn) && !seen.has(cn)) {
+          seen.add(cn);
+          entities.push({ id: cn, label: cn, color: colors[entities.length % colors.length] });
+        }
       }
-      
-      // Regex fallback
-      const enWords = text.match(/\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)*\b/g) || [];
-      const cnWords = text.match(/[\u4e00-\u9fff]{2,4}/g) || [];
-      const stopWords = ['this','that','with','from','they','have','been','will','their','about','would','could','should','after','before','between','没有','什么','可以','一个','这个','那个','我们','他们','你们','因为','所以','但是','如果'];
-      const all = [...new Set([...enWords, ...cnWords])].filter(w => !stopWords.includes(w) && w.length > 1);
-      
-      if (all.length > 0) {
-        const colors = ['#f59e0b','#22c55e','#3b82f6','#a855f7','#ef4444','#06b6d4'];
-        return all.slice(0, 8).map((w, i) => ({ id: w, label: w, color: colors[i % colors.length] }));
-      }
-      
-      return [];
-    }
 
-    function extractRelations(text, entities) {
-      const edges = [];
-      const entityIds = entities.map(e => e.id);
-      
-      VERBS.forEach(v => {
-        let idx = text.indexOf(v);
-        while (idx !== -1) {
-          const before = text.substring(Math.max(0, idx - 40), idx);
-          const after = text.substring(idx + v.length, idx + v.length + 40);
-          const subj = entityIds.find(e => before.includes(e));
-          const obj = entityIds.find(e => after.includes(e));
-          if (subj && obj && subj !== obj) {
-            if (!edges.find(e => e.from === subj && e.to === obj)) {
-              edges.push({ from: subj, to: obj, label: v });
-            }
-          }
-          idx = text.indexOf(v, idx + 1);
+      // 3. Extract known dictionary entities
+      Object.keys(KNOWN).forEach(k => {
+        if (text.includes(k) && !seen.has(k.toLowerCase())) {
+          seen.add(k.toLowerCase());
+          entities.push({ id: k, label: k, color: KNOWN[k] });
         }
       });
+
+      // Sort: prioritize entities that appear more frequently in text
+      entities.sort((a, b) => {
+        const countA = (text.match(new RegExp(a.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
+        const countB = (text.match(new RegExp(b.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
+        return countB - countA;
+      });
+
+      return entities.slice(0, 12);
+    }
+
+    // Smart relation extraction — finds actions between entities
+    function extractRelationsSmart(text, entities) {
+      const edges = [];
+      const entityIds = entities.map(e => e.id);
+
+      // Find entity pairs that share a sentence with an action verb
+      const sentences = text.split(/[.!?\n]+/).filter(s => s.trim().length > 5);
       
+      for (const sentence of sentences) {
+        // Find which entities appear in this sentence
+        const present = entityIds.filter(e => sentence.includes(e));
+        if (present.length < 2) continue;
+
+        // Find action words in this sentence
+        const foundVerbs = VERBS.filter(v => sentence.toLowerCase().includes(v.toLowerCase()));
+        
+        // Create connections between entities in the same sentence
+        for (let i = 0; i < present.length; i++) {
+          for (let j = i + 1; j < present.length; j++) {
+            const verb = foundVerbs.length > 0 ? foundVerbs[0] : 'related';
+            if (!edges.find(e => e.from === present[i] && e.to === present[j])) {
+              edges.push({ from: present[i], to: present[j], label: verb });
+            }
+          }
+        }
+      }
+
+      // If no relations found, connect to root
       if (edges.length === 0 && entities.length > 0) {
         entities.forEach(e => edges.push({ from: 'root', to: e.id }));
       }
-      
+
       return edges;
     }
 
     async function extractGraph(text) {
-      const entities = await extractEntities(text);
-      const edges = extractRelations(text, entities);
+      // Get AI themes for context (for display purposes)
+      const themes = await extractKeyThemes(text);
+      
+      // Extract entities using smart linguistic rules
+      const entities = extractEntitiesSmart(text);
+      
+      // Extract relations
+      const edges = extractRelationsSmart(text, entities);
+      
       const nodes = [{ id: 'root', label: '📄 Source', color: '#7c3aed' }, ...entities];
-      return { nodes, edges };
+      return { nodes, edges, themes };
     }
 
     window.generateGraph = async function() {
