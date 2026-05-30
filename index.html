@@ -395,6 +395,7 @@
       '去','来','在','有','是','做','吃','喝','玩','买','卖','送','给','叫','说',
       '告诉','问','回答','帮助','教','学','读','写','画','唱','跳','跑','走','飞',
       '开','关','拿','放','推','拉','扔','接','打','敲','切','洗','擦','扫','煮',
+      '分给','送给','交给','发给','传给','带给','寄给','写给','卖给','买给',
       'announced','launched','acquired','invested','bought','sold','hired',
       'fired','joined','left','created','built','developed','proposed',
       'approved','rejected','partnered','competed','beat','won','lost',
@@ -461,6 +462,18 @@
           }
         }
         
+        // Merge adjacent verbs into compound verbs (e.g. "分" + "给" -> "分给")
+        const mergedWords = [];
+        for (let i = 0; i < words.length; i++) {
+          if (i < words.length - 1 && ACTION_VERBS.has(words[i]) && ACTION_VERBS.has(words[i+1])) {
+            mergedWords.push(words[i] + words[i+1]);
+            i++; // skip next
+          } else {
+            mergedWords.push(words[i]);
+          }
+        }
+        words = mergedWords;
+        
         // Try to find verb and its neighbors
         for (let i = 0; i < words.length; i++) {
           const word = words[i].replace(/[，。、！？\s,\.!?\n"''"「」『』()（）\[\]]/g, '');
@@ -476,22 +489,22 @@
               const w = words[j].replace(/[，。、！？\s,\.!?\n"''"「」『』()（）\[\]]/g, '');
               if (w && w.length > 0) { subj = w; break; }
             }
-            // Get object (word after verb) — collect multiple objects
+            // Get object (word after verb) — only known entities
             const objs = [];
             for (let j = i + 1; j < words.length; j++) {
               const w = words[j].replace(/[，。、！？\s,\.!?\n"''"「」『』()（）\[\]]/g, '');
               if (!w || w.length === 0) continue;
-              // Stop at next verb or punctuation-like word
               if (ACTION_VERBS.has(w) || ACTION_VERBS.has(w.toLowerCase())) break;
-              // Skip filler words
               if (['一个','五个','这个','那个','这些','那些','每个','很多','一些','所有'].includes(w)) continue;
+              // Only accept known entities or words > 1 char
+              if (w.length < 2) continue;
               objs.push(w);
             }
 
-            if (subj && objs.length > 0) {
+            if (subj && objs.length > 0 && subj.length > 1) {
               addE(subj);
               objs.forEach(obj => {
-                if (obj && obj !== subj && obj.length > 0) {
+                if (obj && obj !== subj && obj.length > 1) {
                   addE(obj);
                   edges.push({ from: subj, to: obj, label: word });
                 }
