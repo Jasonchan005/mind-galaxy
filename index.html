@@ -185,138 +185,167 @@
       'Model 3': '#f59e0b', 'iPhone': '#a855f7', 'Android': '#22c55e',
     };
 
-    // ─── True Triplet Extraction (Subject-Verb-Object) ─────
-    // Extracts "谁 --做了什么--> 谁" from text using linguistic patterns
+    // ─── AI-Powered Triplet Extraction via Hugging Face ────
+    // Uses zero-shot relation extraction (GLiREL) to extract
+    // subject-verb-object triplets — just like reading comprehension
     
-    const TRIPLET_PATTERNS = {
-      // Chinese patterns
-      cn: [
-        // 主语 + 动词 + 宾语
-        { pattern: /([\u4e00-\u9fff]{2,4})(?:[\s]*)(遇到|看见|找到|发现|发明|创建|收购|投资|发布|推出|宣布|任命|开除|支持|反对|加入|离开|打败|赢得|失去|获得)(?:[\s]*)([\u4e00-\u9fff]{2,4})/g,
-          extract: (m) => ({ subj: m[1], verb: m[2], obj: m[3] }) },
-        // 主语 + 的 + 宾语 + 是/有
-        { pattern: /([\u4e00-\u9fff]{2,4})(?:的)([\u4e00-\u9fff]{2,6})(?:是|有)([\u4e00-\u9fff]{2,4})/g,
-          extract: (m) => ({ subj: m[1], verb: '拥有', obj: m[3] }) },
-        // 在 + 地点 + 动词
-        { pattern: /(?:在)([\u4e00-\u9fff]{2,4})(?:[\s]*)([\u4e00-\u9fff]{2,4})(?:了)/g,
-          extract: (m) => ({ subj: '叙述者', verb: m[2], obj: m[1] }) },
-      ],
-      // English patterns
-      en: [
-        // Person/Company + verb + Person/Company
-        { pattern: /\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)\s+(announced|launched|acquired|invested|bought|sold|hired|fired|joined|left|created|built|developed|proposed|approved|rejected|partnered|competed|beat|won|lost)\s+([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)/g,
-          extract: (m) => ({ subj: m[1], verb: m[2], obj: m[3] }) },
-        // Person + verb + to + verb + Person/Company
-        { pattern: /\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)\s+(decided|planned|promised|agreed|refused)\s+to\s+\w+\s+([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)/g,
-          extract: (m) => ({ subj: m[1], verb: m[2], obj: m[3] }) },
-      ]
-    };
+    async function extractWithHF(text) {
+      // Try GLiREL zero-shot relation extraction
+      try {
+        const resp = await fetch('https://api-inference.huggingface.co/models/jackboyla/glirel_beta', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            inputs: text.substring(0, 800),
+            parameters: {
+              candidate_labels: [
+                'founder_of', 'acquired', 'invested_in', 'partnered_with', 'competed_with',
+                'announced', 'launched', 'developed', 'created', 'owns',
+                'located_in', 'employee_of', 'ceo_of', 'president_of',
+                'married_to', 'parent_of', 'sibling_of', 'friend_of',
+                'attacked', 'supported', 'opposed', 'won_against', 'lost_to'
+              ]
+            }
+          }),
+          signal: AbortSignal.timeout(15000)
+        });
+        if (!resp.ok) throw new Error('HF GLiREL error: ' + resp.status);
+        return await resp.json();
+      } catch(e) {
+        // Fallback: try zero-shot NER to at least find entities
+        try {
+          const resp2 = await fetch('https://api-inference.huggingface.co/models/facebook/bart-large-mnli', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              inputs: text.substring(0, 800),
+              parameters: {
+                candidate_labels: ['person', 'company', 'product', 'country', 'technology', 'event', 'sports', 'concept']
+              }
+            }),
+            signal: AbortSignal.timeout(10000)
+          });
+          if (!resp2.ok) throw new Error('HF fallback error');
+          return await resp2.json();
+        } catch(e2) {
+          return null;
+        }
+      }
+    }
 
-    // Action verb list for fallback detection
-    const ACTION_VERBS = new Set([
-      '遇到','看见','找到','发现','发明','创建','收购','投资','发布','推出',
-      '宣布','任命','开除','支持','反对','加入','离开','打败','赢得','失去','获得',
-      '宣布','发布','推出','收购','投资','合作','竞争','反对','支持','任命',
-      'announced','launched','acquired','invested','bought','sold','hired',
-      'fired','joined','left','created','built','developed','proposed',
-      'approved','rejected','partnered','competed','beat','won','lost','met'
-    ]);
-
-    function extractTriplets(text) {
+    function extractTripletsLocally(text) {
       const triplets = [];
-      const entities = new Map(); // id -> { label, color }
+      const entities = new Map();
       const colors = ['#f59e0b','#22c55e','#3b82f6','#a855f7','#ef4444','#06b6d4','#ec4899','#14b8a6'];
       
-      function addEntity(name) {
+      function addE(name) {
         if (!name || name.length < 2) return;
         const key = name.toLowerCase().trim();
         if (!entities.has(key)) {
-          entities.set(key, { 
-            id: name.trim(), 
-            label: name.trim(), 
-            color: colors[entities.size % colors.length] 
-          });
+          entities.set(key, { id: name.trim(), label: name.trim(), color: colors[entities.size % colors.length] });
         }
       }
 
-      // Step 1: Extract triplets using patterns
-      const allPatterns = [...TRIPLET_PATTERNS.cn, ...TRIPLET_PATTERNS.en];
-      for (const { pattern, extract } of allPatterns) {
-        let match;
-        while ((match = pattern.exec(text)) !== null) {
-          try {
-            const { subj, verb, obj } = extract(match);
-            if (subj && verb && obj && subj !== obj) {
-              addEntity(subj);
-              addEntity(obj);
-              triplets.push({ from: subj.trim(), to: obj.trim(), label: verb });
-            }
-          } catch(e) {}
-        }
-      }
-
-      // Step 2: Fallback — find sentences with known action verbs
-      if (triplets.length === 0) {
-        const sentences = text.split(/[。！？\n.!?]+/).filter(s => s.trim().length > 3);
-        for (const sentence of sentences) {
-          // Find action verbs in this sentence
-          const words = sentence.split(/[\s,，、]+/);
-          for (let i = 0; i < words.length; i++) {
-            const word = words[i].replace(/[，。、！？\s,\.!?\n]/g, '');
-            if (ACTION_VERBS.has(word.toLowerCase())) {
-              // Get word before (subject) and after (object)
-              const subj = i > 0 ? words[i-1].replace(/[，。、！？\s,\.!?\n]/g, '') : '';
-              const obj = i < words.length - 1 ? words[i+1].replace(/[，。、！？\s,\.!?\n]/g, '') : '';
-              if (subj && obj && subj !== obj && subj.length > 1 && obj.length > 1) {
-                addEntity(subj);
-                addEntity(obj);
-                triplets.push({ from: subj, to: obj, label: word });
-              }
-            }
+      // Pattern-based extraction for Chinese
+      const cnPatterns = [
+        /([\u4e00-\u9fff]{2,4})(?:[\s]*)(遇到|看见|找到|发现|发明|创建|收购|投资|发布|推出|宣布|任命|开除|支持|反对|加入|离开|打败|赢得|失去|获得|去|来|在|有|是|做|吃|喝|玩|买|卖|送|给|叫)(?:[\s]*)([\u4e00-\u9fff]{2,4})/g,
+        /([\u4e00-\u9fff]{2,4})(?:的)([\u4e00-\u9fff]{2,6})(?:是|有)([\u4e00-\u9fff]{2,4})/g,
+      ];
+      
+      for (const p of cnPatterns) {
+        let m; while ((m = p.exec(text)) !== null) {
+          if (m[1] && m[3] && m[1] !== m[3]) {
+            addE(m[1]); addE(m[3]);
+            triplets.push({ from: m[1].trim(), to: m[3].trim(), label: m[2] || 'related' });
           }
         }
       }
 
-      // Step 3: If still nothing, use simple noun extraction
-      if (entities.size === 0) {
-        // English proper nouns
+      // Pattern-based extraction for English
+      const enPattern = /\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)\s+(announced|launched|acquired|invested|bought|sold|hired|fired|joined|left|created|built|developed|proposed|approved|rejected|partnered|competed|beat|won|lost|met|visited|called|told|asked|helped)\s+([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)/g;
+      let m2; while ((m2 = enPattern.exec(text)) !== null) {
+        addE(m2[1]); addE(m2[3]);
+        triplets.push({ from: m2[1].trim(), to: m2[3].trim(), label: m2[2] });
+      }
+
+      // If no triplets found, use simple noun extraction as fallback
+      if (triplets.length === 0) {
         const enNouns = text.match(/\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)*/g) || [];
         for (const n of enNouns) {
           const firstWords = text.split(/[.!?\n]/).map(s => s.trim().split(/\s/)[0]).filter(Boolean);
-          if (!firstWords.includes(n) || n.length > 5) addEntity(n);
+          if ((!firstWords.includes(n) || n.length > 5) && n.length > 2) addE(n);
         }
-        // Chinese 2-4 char words
         const cnNouns = text.match(/[\u4e00-\u9fff]{2,4}/g) || [];
-        const cnStop = new Set(['没有','什么','可以','一个','这个','那个','我们','他们','你们','因为','所以','但是','如果','虽然','而且','或者','还是','不是','就是','只是','已经','所有','一些','这些','那些','每个','很多','怎么','自己','知道','看到','觉得','开始','最后','还有','之后','然后','这里','那里','时候','为什么','这样','那样','通过','可能','应该']);
-        for (const cn of cnNouns) {
-          if (!cnStop.has(cn)) addEntity(cn);
-        }
-        // Known dictionary
-        Object.keys(KNOWN).forEach(k => {
-          if (text.includes(k)) addEntity(k);
-        });
+        const stop = new Set(['没有','什么','可以','一个','这个','那个','我们','他们','你们','因为','所以','但是','如果']);
+        for (const cn of cnNouns) { if (!stop.has(cn)) addE(cn); }
+        Object.keys(KNOWN).forEach(k => { if (text.includes(k)) addE(k); });
+        
+        // Connect all to root
+        entities.forEach(e => triplets.push({ from: 'root', to: e.id, label: '' }));
       }
 
-      // Build final edges
-      const edges = triplets.map(t => ({
-        from: t.from, to: t.to, label: t.label
-      }));
-
-      // Connect isolated entities to root
       const connected = new Set();
-      edges.forEach(e => { connected.add(e.from); connected.add(e.to); });
-      const isolated = [...entities.values()].filter(e => !connected.has(e.id));
-      isolated.forEach(e => edges.push({ from: 'root', to: e.id, label: '' }));
+      triplets.forEach(e => { connected.add(e.from); connected.add(e.to); });
+      entities.forEach(e => { if (!connected.has(e.id)) triplets.push({ from: 'root', to: e.id, label: '' }); });
 
       return {
         nodes: [{ id: 'root', label: '📄 Source', color: '#7c3aed' }, ...entities.values()],
-        edges
+        edges: triplets
       };
     }
 
     async function extractGraph(text) {
-      // Simple synchronous extraction — no API calls needed
-      return extractTriplets(text);
+      // Try HF AI extraction first
+      const hfResult = await extractWithHF(text);
+      
+      if (hfResult && Array.isArray(hfResult) && hfResult.length > 0) {
+        // HF returned relation triplets
+        const entities = new Map();
+        const edges = [];
+        const colors = ['#f59e0b','#22c55e','#3b82f6','#a855f7','#ef4444','#06b6d4','#ec4899','#14b8a6'];
+        
+        function addE(name) {
+          if (!name || name.length < 2) return;
+          const key = name.toLowerCase().trim();
+          if (!entities.has(key)) {
+            entities.set(key, { id: name.trim(), label: name.trim(), color: colors[entities.size % colors.length] });
+          }
+        }
+
+        for (const rel of hfResult) {
+          const head = rel.head_text || rel.head || '';
+          const tail = rel.tail_text || rel.tail || '';
+          const label = rel.label || rel.relation || 'related';
+          if (head && tail && head !== tail) {
+            addE(head); addE(tail);
+            edges.push({ from: head.trim(), to: tail.trim(), label });
+          }
+        }
+
+        if (edges.length > 0) {
+          const connected = new Set();
+          edges.forEach(e => { connected.add(e.from); connected.add(e.to); });
+          entities.forEach(e => { if (!connected.has(e.id)) edges.push({ from: 'root', to: e.id, label: '' }); });
+          return { nodes: [{ id: 'root', label: '📄 Source', color: '#7c3aed' }, ...entities.values()], edges };
+        }
+      }
+
+      if (hfResult && hfResult.labels) {
+        // Zero-shot classification result — use labels as themes
+        const entities = new Map();
+        const edges = [];
+        const colors = ['#f59e0b','#22c55e','#3b82f6','#a855f7','#ef4444','#06b6d4'];
+        hfResult.labels.slice(0, 6).forEach((label, i) => {
+          entities.set(label, { id: label, label, color: colors[i] });
+          edges.push({ from: 'root', to: label, label: '' });
+        });
+        if (entities.size > 0) {
+          return { nodes: [{ id: 'root', label: '📄 Source', color: '#7c3aed' }, ...entities.values()], edges };
+        }
+      }
+
+      // Fallback to local extraction
+      return extractTripletsLocally(text);
     }
 
     window.generateGraph = function() {
