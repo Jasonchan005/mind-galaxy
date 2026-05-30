@@ -428,7 +428,9 @@
         let words = trimmed.split(/[\s,，、；;：:！!？?]+/).filter(w => w.length > 0);
         
         // If no spaces found (pure Chinese), segment by known entities
-        if (words.length <= 1 && /[\u4e00-\u9fff]/.test(trimmed)) {
+        // Check if any word is a long Chinese string that needs segmentation
+        const needsChineseSegment = words.some(w => w.length > 3 && /[\u4e00-\u9fff]/.test(w));
+        if (needsChineseSegment) {
           // Find known entities in the text and use them as anchors
           const foundEntities = Object.keys(KNOWN).filter(k => trimmed.includes(k));
           if (foundEntities.length > 0) {
