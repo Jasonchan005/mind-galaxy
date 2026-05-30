@@ -185,154 +185,151 @@
       'Model 3': '#f59e0b', 'iPhone': '#a855f7', 'Android': '#22c55e',
     };
 
-    const VERBS = ['发布','推出','收购','投资','合作','竞争','反对','支持','宣布','降价','涨价','起诉','辞职','当选','任命','研发','launch','acquire','invest','partner','compete','announce','cut','raise','sue','resign','elect','appoint','develop','create','build','lead','manage','join','leave','approve','reject','propose'];
-
-    // ─── Smart Entity & Relation Extraction ─────────────────
-    // Uses Hugging Face zero-shot classification to identify key topics,
-    // then finds meaningful noun phrases in the text.
+    // ─── True Triplet Extraction (Subject-Verb-Object) ─────
+    // Extracts "谁 --做了什么--> 谁" from text using linguistic patterns
     
-    // Call Hugging Face zero-shot to get the main themes
-    async function extractKeyThemes(text) {
-      try {
-        const resp = await fetch('https://api-inference.huggingface.co/models/facebook/bart-large-mnli', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            inputs: text.substring(0, 800),
-            parameters: {
-              candidate_labels: [
-                'business', 'technology', 'politics', 'science', 'sports',
-                'company', 'product launch', 'investment', 'acquisition',
-                'competition', 'innovation', 'regulation', 'economy',
-                'climate', 'health', 'education', 'entertainment'
-              ]
-            }
-          }),
-          signal: AbortSignal.timeout(10000)
-        });
-        if (!resp.ok) throw new Error('HF error: ' + resp.status);
-        return await resp.json();
-      } catch(e) {
-        return null;
-      }
-    }
+    const TRIPLET_PATTERNS = {
+      // Chinese patterns
+      cn: [
+        // 主语 + 动词 + 宾语
+        { pattern: /([\u4e00-\u9fff]{2,4})(?:[\s]*)(遇到|看见|找到|发现|发明|创建|收购|投资|发布|推出|宣布|任命|开除|支持|反对|加入|离开|打败|赢得|失去|获得)(?:[\s]*)([\u4e00-\u9fff]{2,4})/g,
+          extract: (m) => ({ subj: m[1], verb: m[2], obj: m[3] }) },
+        // 主语 + 的 + 宾语 + 是/有
+        { pattern: /([\u4e00-\u9fff]{2,4})(?:的)([\u4e00-\u9fff]{2,6})(?:是|有)([\u4e00-\u9fff]{2,4})/g,
+          extract: (m) => ({ subj: m[1], verb: '拥有', obj: m[3] }) },
+        // 在 + 地点 + 动词
+        { pattern: /(?:在)([\u4e00-\u9fff]{2,4})(?:[\s]*)([\u4e00-\u9fff]{2,4})(?:了)/g,
+          extract: (m) => ({ subj: '叙述者', verb: m[2], obj: m[1] }) },
+      ],
+      // English patterns
+      en: [
+        // Person/Company + verb + Person/Company
+        { pattern: /\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)\s+(announced|launched|acquired|invested|bought|sold|hired|fired|joined|left|created|built|developed|proposed|approved|rejected|partnered|competed|beat|won|lost)\s+([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)/g,
+          extract: (m) => ({ subj: m[1], verb: m[2], obj: m[3] }) },
+        // Person + verb + to + verb + Person/Company
+        { pattern: /\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)\s+(decided|planned|promised|agreed|refused)\s+to\s+\w+\s+([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)/g,
+          extract: (m) => ({ subj: m[1], verb: m[2], obj: m[3] }) },
+      ]
+    };
 
-    // Extract meaningful entities using linguistics + statistics
-    function extractEntitiesSmart(text) {
-      const entities = [];
-      const seen = new Set();
+    // Action verb list for fallback detection
+    const ACTION_VERBS = new Set([
+      '遇到','看见','找到','发现','发明','创建','收购','投资','发布','推出',
+      '宣布','任命','开除','支持','反对','加入','离开','打败','赢得','失去','获得',
+      '宣布','发布','推出','收购','投资','合作','竞争','反对','支持','任命',
+      'announced','launched','acquired','invested','bought','sold','hired',
+      'fired','joined','left','created','built','developed','proposed',
+      'approved','rejected','partnered','competed','beat','won','lost','met'
+    ]);
+
+    function extractTriplets(text) {
+      const triplets = [];
+      const entities = new Map(); // id -> { label, color }
       const colors = ['#f59e0b','#22c55e','#3b82f6','#a855f7','#ef4444','#06b6d4','#ec4899','#14b8a6'];
-
-      // 1. Extract proper nouns (Capitalized multi-word phrases in English)
-      const properNouns = text.match(/\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)*/g) || [];
-      for (const pn of properNouns) {
-        const clean = pn.trim();
-        if (clean.length > 2 && !seen.has(clean.toLowerCase())) {
-          // Filter out sentence-starting words (likely not proper nouns)
-          const firstWords = text.split(/[.!?\n]/).map(s => s.trim().split(/\s/)[0]).filter(Boolean);
-          if (!firstWords.includes(clean) || clean.length > 5) {
-            seen.add(clean.toLowerCase());
-            entities.push({ id: clean, label: clean, color: colors[entities.length % colors.length] });
-          }
-        }
-      }
-
-      // 2. Extract Chinese entities (2-4 char meaningful words)
-      const cnEntities = text.match(/[\u4e00-\u9fff]{2,4}/g) || [];
-      const cnStopWords = new Set(['没有','什么','可以','一个','这个','那个','我们','他们','你们','因为','所以','但是','如果','虽然','而且','或者','还是','不是','就是','只是','已经','所有','一些','这些','那些','每个','很多','怎么','自己','知道','看到','觉得','开始','最后','还有','之后','然后','这里','那里','时候','为什么','这样','那样','通过','可能','应该']);
-      for (const cn of cnEntities) {
-        if (!cnStopWords.has(cn) && !seen.has(cn)) {
-          seen.add(cn);
-          entities.push({ id: cn, label: cn, color: colors[entities.length % colors.length] });
-        }
-      }
-
-      // 3. Extract known dictionary entities
-      Object.keys(KNOWN).forEach(k => {
-        if (text.includes(k) && !seen.has(k.toLowerCase())) {
-          seen.add(k.toLowerCase());
-          entities.push({ id: k, label: k, color: KNOWN[k] });
-        }
-      });
-
-      // Sort: prioritize entities that appear more frequently in text
-      entities.sort((a, b) => {
-        const countA = (text.match(new RegExp(a.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
-        const countB = (text.match(new RegExp(b.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
-        return countB - countA;
-      });
-
-      return entities.slice(0, 12);
-    }
-
-    // Smart relation extraction — finds actions between entities
-    function extractRelationsSmart(text, entities) {
-      const edges = [];
-      const entityIds = entities.map(e => e.id);
-
-      // Find entity pairs that share a sentence with an action verb
-      const sentences = text.split(/[.!?\n]+/).filter(s => s.trim().length > 5);
       
-      for (const sentence of sentences) {
-        // Find which entities appear in this sentence
-        const present = entityIds.filter(e => sentence.includes(e));
-        if (present.length < 2) continue;
+      function addEntity(name) {
+        if (!name || name.length < 2) return;
+        const key = name.toLowerCase().trim();
+        if (!entities.has(key)) {
+          entities.set(key, { 
+            id: name.trim(), 
+            label: name.trim(), 
+            color: colors[entities.size % colors.length] 
+          });
+        }
+      }
 
-        // Find action words in this sentence
-        const foundVerbs = VERBS.filter(v => sentence.toLowerCase().includes(v.toLowerCase()));
-        
-        // Create connections between entities in the same sentence
-        for (let i = 0; i < present.length; i++) {
-          for (let j = i + 1; j < present.length; j++) {
-            const verb = foundVerbs.length > 0 ? foundVerbs[0] : 'related';
-            if (!edges.find(e => e.from === present[i] && e.to === present[j])) {
-              edges.push({ from: present[i], to: present[j], label: verb });
+      // Step 1: Extract triplets using patterns
+      const allPatterns = [...TRIPLET_PATTERNS.cn, ...TRIPLET_PATTERNS.en];
+      for (const { pattern, extract } of allPatterns) {
+        let match;
+        while ((match = pattern.exec(text)) !== null) {
+          try {
+            const { subj, verb, obj } = extract(match);
+            if (subj && verb && obj && subj !== obj) {
+              addEntity(subj);
+              addEntity(obj);
+              triplets.push({ from: subj.trim(), to: obj.trim(), label: verb });
+            }
+          } catch(e) {}
+        }
+      }
+
+      // Step 2: Fallback — find sentences with known action verbs
+      if (triplets.length === 0) {
+        const sentences = text.split(/[。！？\n.!?]+/).filter(s => s.trim().length > 3);
+        for (const sentence of sentences) {
+          // Find action verbs in this sentence
+          const words = sentence.split(/[\s,，、]+/);
+          for (let i = 0; i < words.length; i++) {
+            const word = words[i].replace(/[，。、！？\s,\.!?\n]/g, '');
+            if (ACTION_VERBS.has(word.toLowerCase())) {
+              // Get word before (subject) and after (object)
+              const subj = i > 0 ? words[i-1].replace(/[，。、！？\s,\.!?\n]/g, '') : '';
+              const obj = i < words.length - 1 ? words[i+1].replace(/[，。、！？\s,\.!?\n]/g, '') : '';
+              if (subj && obj && subj !== obj && subj.length > 1 && obj.length > 1) {
+                addEntity(subj);
+                addEntity(obj);
+                triplets.push({ from: subj, to: obj, label: word });
+              }
             }
           }
         }
       }
 
-      // If no relations found, connect to root
-      if (edges.length === 0 && entities.length > 0) {
-        entities.forEach(e => edges.push({ from: 'root', to: e.id }));
+      // Step 3: If still nothing, use simple noun extraction
+      if (entities.size === 0) {
+        // English proper nouns
+        const enNouns = text.match(/\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)*/g) || [];
+        for (const n of enNouns) {
+          const firstWords = text.split(/[.!?\n]/).map(s => s.trim().split(/\s/)[0]).filter(Boolean);
+          if (!firstWords.includes(n) || n.length > 5) addEntity(n);
+        }
+        // Chinese 2-4 char words
+        const cnNouns = text.match(/[\u4e00-\u9fff]{2,4}/g) || [];
+        const cnStop = new Set(['没有','什么','可以','一个','这个','那个','我们','他们','你们','因为','所以','但是','如果','虽然','而且','或者','还是','不是','就是','只是','已经','所有','一些','这些','那些','每个','很多','怎么','自己','知道','看到','觉得','开始','最后','还有','之后','然后','这里','那里','时候','为什么','这样','那样','通过','可能','应该']);
+        for (const cn of cnNouns) {
+          if (!cnStop.has(cn)) addEntity(cn);
+        }
+        // Known dictionary
+        Object.keys(KNOWN).forEach(k => {
+          if (text.includes(k)) addEntity(k);
+        });
       }
 
-      return edges;
+      // Build final edges
+      const edges = triplets.map(t => ({
+        from: t.from, to: t.to, label: t.label
+      }));
+
+      // Connect isolated entities to root
+      const connected = new Set();
+      edges.forEach(e => { connected.add(e.from); connected.add(e.to); });
+      const isolated = [...entities.values()].filter(e => !connected.has(e.id));
+      isolated.forEach(e => edges.push({ from: 'root', to: e.id, label: '' }));
+
+      return {
+        nodes: [{ id: 'root', label: '📄 Source', color: '#7c3aed' }, ...entities.values()],
+        edges
+      };
     }
 
     async function extractGraph(text) {
-      // Get AI themes for context (for display purposes)
-      const themes = await extractKeyThemes(text);
-      
-      // Extract entities using smart linguistic rules
-      const entities = extractEntitiesSmart(text);
-      
-      // Extract relations
-      const edges = extractRelationsSmart(text, entities);
-      
-      const nodes = [{ id: 'root', label: '📄 Source', color: '#7c3aed' }, ...entities];
-      return { nodes, edges, themes };
+      // Simple synchronous extraction — no API calls needed
+      return extractTriplets(text);
     }
 
-    window.generateGraph = async function() {
+    window.generateGraph = function() {
       const text = document.getElementById('inputText').value.trim();
       if (!text) return;
-      
-      // Show loading state
-      document.getElementById('generateBtn').textContent = '⏳ Analyzing...';
-      document.getElementById('generateBtn').disabled = true;
-      
-      await generateFromText(text);
-      
-      document.getElementById('generateBtn').textContent = '🚀 Generate Graph';
-      document.getElementById('generateBtn').disabled = false;
+      generateFromText(text);
       trackEvent('generate', { source: 'text', tool: 'galaxymind' });
     };
 
-    async function generateFromText(text) {
+    function generateFromText(text) {
       while(graphGroup.children.length) graphGroup.remove(graphGroup.children[0]);
 
-      const { nodes, edges } = await extractGraph(text);
+      const { nodes, edges } = extractGraph(text);
       const nodeMap = {};
       const positions = [];
       const sphereRadius = 6;
