@@ -404,6 +404,23 @@
       const edges = [];
       const colors = ['#f59e0b','#22c55e','#3b82f6','#a855f7','#ef4444','#06b6d4','#ec4899','#14b8a6'];
       
+      // Smart Chinese word extraction
+      function extractChineseWords(sentence) {
+        const words = [];
+        const raw = sentence.match(/[\u4e00-\u9fff]{2,4}/g) || [];
+        for (const w of raw) {
+          // Check if this word appears as a clean segment (not跨越词边界)
+          if (sentence.includes('' + w + '') || sentence.includes('' + w + '，') || sentence.includes('' + w + '。') || sentence.includes('' + w + '、')) {
+            words.push(w);
+          }
+        }
+        // Also check KNOWN dictionary
+        Object.keys(KNOWN).forEach(k => {
+          if (sentence.includes(k) && !words.includes(k)) words.push(k);
+        });
+        return [...new Set(words)];
+      }
+      
       function addE(name) {
         if (!name || name.length < 2) return;
         const clean = name.trim().replace(/^[^a-zA-Z\u4e00-\u9fff]+|[^a-zA-Z\u4e00-\u9fff]+$/g, '');
@@ -459,8 +476,8 @@
           }
         }
 
-        // Find Chinese 2-4 char nouns
-        const cnNouns = trimmed.match(/[\u4e00-\u9fff]{2,4}/g) || [];
+        // Find Chinese 2-4 char nouns — use proper extraction
+        const cnNouns = extractChineseWords(trimmed);
         const stop = new Set(['没有','什么','可以','一个','这个','那个','我们','他们','你们','因为','所以','但是','如果','虽然','而且','或者','还是','不是','就是','只是','已经','所有','一些','这些','那些','每个','很多','怎么','自己','知道','看到','觉得','开始','最后','还有','之后','然后','这里','那里','时候','为什么','这样','那样','通过','可能','应该','需要','成为','以及','不是','就是','只是','但是','因为','所以']);
         for (const cn of cnNouns) {
           if (!stop.has(cn) && !cn.includes('的') && !cn.includes('了')) addE(cn);
@@ -483,11 +500,29 @@
         }
       }
 
+      // Clean up garbage entities from Chinese over-extraction
+      const properCnWords = new Set();
+      sentences.forEach(s => {
+        extractChineseWords(s).forEach(w => properCnWords.add(w));
+      });
+      const garbageIds = [];
+      entities.forEach((val, key) => {
+        if (/[\u4e00-\u9fff]/.test(key)) {
+          if (!properCnWords.has(key) && !Object.keys(KNOWN).includes(key)) {
+            garbageIds.push(key);
+          }
+        }
+      });
+      garbageIds.forEach(id => entities.delete(id));
+      properCnWords.forEach(w => {
+        if (!entities.has(w.toLowerCase())) addE(w);
+      });
+
       // Connect isolated entities to root
       const connected = new Set();
       uniqueEdges.forEach(e => { connected.add(e.from); connected.add(e.to); });
       entities.forEach(e => { if (!connected.has(e.id)) uniqueEdges.push({ from: 'root', to: e.id, label: '' }); });
-      
+
       // ─── Smart parent-child detection ─────────────────────
       // Detect entities with numeric suffixes (陈一,陈二...陈五 → child of 陈)
       // Detect entities sharing a common prefix (iPhone 15, iPhone 16 → child of iPhone)
