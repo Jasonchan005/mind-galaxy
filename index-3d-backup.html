@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-503ZSLGF0W"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-503ZSLGF0W');
+    function trackEvent(action, params) {
+      if (typeof gtag === 'function') gtag('event', action, params || {});
+    }
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mind-Galaxy – 3D Knowledge Graph Generator | AI Mind Map from Text</title>
+  <meta name="description" content="Turn any text, news article, or document into a stunning 3D knowledge graph. Paste text, upload PDF/Word, or enter a URL — Mind-Galaxy automatically extracts entities and relationships.">
+  <meta name="keywords" content="knowledge graph, 3D mind map, AI mind map, knowledge graph generator, text to graph, entity relationship, news analysis">
+  <meta property="og:title" content="Mind-Galaxy – 3D Knowledge Graph Generator">
+  <meta property="og:description" content="Turn text into stunning 3D knowledge graphs. Free, no sign-up.">
+  <meta property="og:url" content="https://mind-galaxy-three.vercel.app/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Mind-Galaxy">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Mind-Galaxy – 3D Knowledge Graph Generator">
+  <meta name="twitter:description" content="Turn text into stunning 3D knowledge graphs. Free, no sign-up.">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="canonical" href="https://mind-galaxy-three.vercel.app/">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif; margin: 0; overflow: hidden; background: #0a0a1a; color: white; }
+    #ui-overlay { position: relative; z-index: 20; pointer-events: none; }
+    #ui-overlay > * { pointer-events: auto; }
+    .header { text-align: center; padding: 18px 16px 10px; }
+    .header h1 { font-size: 22px; font-weight: 800; background: linear-gradient(135deg, #a78bfa, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .header p { font-size: 12px; color: #64748b; margin-top: 2px; }
+    
+    .input-panel { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 30; width: 90%; max-width: 700px; }
+    .input-tabs { display: flex; gap: 4px; margin-bottom: 6px; }
+    .input-tab { padding: 6px 14px; background: rgba(30,41,59,0.9); border: 1px solid #334155; border-radius: 8px 8px 0 0; color: #94a3b8; font-size: 12px; cursor: pointer; font-weight: 500; }
+    .input-tab.active { background: rgba(15,23,42,0.95); border-color: #7c3aed; color: #a78bfa; }
+    .input-body { background: rgba(15,23,42,0.95); border: 1px solid #334155; border-radius: 0 8px 8px 8px; padding: 10px; backdrop-filter: blur(10px); }
+    .input-body textarea { width: 100%; padding: 8px; border: 1px solid #334155; border-radius: 6px; background: rgba(0,0,0,0.3); color: #e2e8f0; font-size: 13px; min-height: 50px; resize: vertical; font-family: inherit; outline: none; position: relative; z-index: 35; }
+    .input-body textarea:focus { border-color: #7c3aed; }
+    .input-row { display: flex; gap: 6px; margin-top: 6px; align-items: center; flex-wrap: wrap; }
+    .input-row button { padding: 7px 16px; background: #7c3aed; border: none; border-radius: 6px; color: white; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; position: relative; z-index: 35; }
+    .input-row button:hover { background: #6d28d9; }
+    .input-row button.secondary { background: #1e293b; border: 1px solid #334155; color: #94a3b8; }
+    .input-row button.secondary:hover { border-color: #7c3aed; color: #a78bfa; }
+    .input-row input[type="file"] { display: none; }
+    .input-row .file-label { padding: 7px 14px; background: #1e293b; border: 1px solid #334155; border-radius: 6px; color: #94a3b8; font-size: 12px; cursor: pointer; }
+    .input-row .file-label:hover { border-color: #7c3aed; color: #a78bfa; }
+    .examples { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+    .example-btn { padding: 3px 10px; background: rgba(30,41,59,0.5); border: 1px solid #334155; border-radius: 4px; color: #64748b; font-size: 11px; cursor: pointer; }
+    .example-btn:hover { border-color: #7c3aed; color: #a78bfa; }
+    .info-bar { position: absolute; top: 68px; left: 50%; transform: translateX(-50%); z-index: 15; font-size: 12px; color: #64748b; text-align: center; pointer-events: none; background: rgba(10,10,26,0.6); padding: 4px 14px; border-radius: 20px; border: 1px solid rgba(51,65,85,0.3); }
+    .tagline { position: absolute; bottom: 4px; right: 12px; font-size: 10px; color: #334155; z-index: 15; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div id="ui-overlay">
+    <div class="header">
+      <h1>🌌 Mind-Galaxy</h1>
+      <p>Turn any text into a 3D knowledge graph</p>
+    </div>
+  </div>
+  <div class="info-bar">🖱️ Drag to rotate · Scroll to zoom</div>
+
+  <div class="input-panel">
+    <div class="input-tabs">
+      <div class="input-tab active" data-tab="text" onclick="switchTab('text')">✏️ Text</div>
+      <div class="input-tab" data-tab="url" onclick="switchTab('url')">🔗 URL</div>
+      <div class="input-tab" data-tab="file" onclick="switchTab('file')">📄 File</div>
+    </div>
+    <div class="input-body">
+      <!-- Text tab -->
+      <div id="tab-text">
+        <textarea id="inputText" placeholder="Paste any text — news, article, story...">Elon Musk announced Tesla's new self-driving system. Tesla shares rose 5% after the announcement. Competitors like Waymo and Cruise are also developing autonomous driving technology.</textarea>
+        <div class="input-row">
+          <button id="generateBtn" onclick="generateGraph()">🚀 Generate Graph</button>
+          <div class="examples">
+            <span style="color:#475569;font-size:11px;">Try:</span>
+            <button class="example-btn" onclick="loadExample(1)">Tesla</button>
+            <button class="example-btn" onclick="loadExample(2)">Tech</button>
+            <button class="example-btn" onclick="loadExample(3)">Chinese</button>
+            <button class="example-btn" onclick="loadExample(4)">Politics</button>
+          </div>
+        </div>
+      </div>
+      <!-- URL tab -->
+      <div id="tab-url" class="hidden">
+        <textarea id="inputUrl" placeholder="Paste a news/article URL..."></textarea>
+        <div class="input-row">
+          <button onclick="fetchUrl()">🔍 Fetch & Generate</button>
+          <span style="font-size:11px;color:#475569;">We'll read the page and extract key info</span>
+        </div>
+      </div>
+      <!-- File tab -->
+      <div id="tab-file" class="hidden">
+        <p style="font-size:12px;color:#64748b;margin-bottom:8px;">Upload a PDF or Word document</p>
+        <div class="input-row">
+          <label class="file-label" for="fileInput">📎 Choose File (PDF/DOCX)</label>
+          <input type="file" id="fileInput" accept=".pdf,.docx">
+          <button onclick="processFile()">📄 Extract & Generate</button>
+        </div>
+        <p id="fileStatus" style="font-size:11px;color:#475569;margin-top:4px;"></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="tagline">Mind-Galaxy by JCS Labs</div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a0a1a);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(15, 10, 20);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.prepend(renderer.domElement);
+
+    const labelRenderer = new CSS2DRenderer();
+    labelRenderer.setSize(window.innerWidth, window.innerHeight);
+    labelRenderer.domElement.style.position = 'absolute';
+    labelRenderer.domElement.style.top = '0';
+    labelRenderer.domElement.style.left = '0';
+    labelRenderer.domElement.style.pointerEvents = 'none';
+    document.body.prepend(labelRenderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.autoRotate = false;
+    controls.target.set(0, 0, 0);
+    controls.maxPolarAngle = Math.PI / 2;
+
+    const ambientLight = new THREE.AmbientLight(0x404060);
+    scene.add(ambientLight);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    dirLight.position.set(10, 20, 10);
+    scene.add(dirLight);
+    const backLight = new THREE.DirectionalLight(0x7c3aed, 0.5);
+    backLight.position.set(-10, -5, -10);
+    scene.add(backLight);
+
+    // Stars
+    const starsGeo = new THREE.BufferGeometry();
+    const starPos = new Float32Array(2000 * 3);
+    for (let i = 0; i < 2000 * 3; i++) starPos[i] = (Math.random() - 0.5) * 200;
+    starsGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+    const starsMat = new THREE.PointsMaterial({ color: 0x7c3aed, size: 0.1, transparent: true, opacity: 0.6 });
+    scene.add(new THREE.Points(starsGeo, starsMat));
+
+    let graphGroup = new THREE.Group();
+    scene.add(graphGroup);
+    let lastGraphData = { nodes: [], edges: [] };
+    window.lastGraphData = lastGraphData;
+    window.allNodeMeshes = [];         // Exposed for testing
+    window.renderer = renderer;
+    
+    // ─── Interactive Sphere-in-Sphere ──────────────────────
+    let allNodeMeshes = window.allNodeMeshes;
+    let allNodeData = new Map();    // nodeId -> { mesh, label, pos, data }
+    let expandedNodeId = null;      // Currently expanded node
+    let childNodes = [];            // Temporary child meshes when expanded
+    let childLabels = [];           // Temporary child labels
+    let childEdges = [];            // Temporary child edges
+    let childParticles = [];
+    let animating = false;
+    
+    // Raycaster for click detection
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    
+    renderer.domElement.addEventListener('click', onClickCanvas);
+    renderer.domElement.addEventListener('touchstart', (e) => {
+      if (e.changedTouches.length > 0) {
+        const touch = e.changedTouches[0];
+        pointer.x = (touch.clientX / window.innerWidth) * 2 - 1;
+        pointer.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+        checkClick();
+      }
+    });
+    
+    function onClickCanvas(event) {
+      pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+      pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+      checkClick();
+    }
+    
+    function checkClick() {
+      if (animating) return;
+      raycaster.setFromCamera(pointer, camera);
+      
+      // Check clicks on all node meshes
+      const intersects = raycaster.intersectObjects(allNodeMeshes);
+      
+      if (intersects.length > 0) {
+        const hit = intersects[0].object;
+        const nodeId = hit.userData.nodeId;
+        if (nodeId && nodeId !== 'root') {
+          toggleExpand(nodeId);
+          return;
+        }
+      }
+      
+      // Click on empty space — collapse
+      if (expandedNodeId) {
+        collapseAll();
+      }
+    }
+    
+    function toggleExpand(nodeId) {
+      if (expandedNodeId === nodeId) {
+        collapseAll();
+      } else {
+        expandNode(nodeId);
+      }
+    }
+    
+    function expandNode(nodeId) {
+      if (expandedNodeId) collapseAll();
+      expandedNodeId = nodeId;
+      animating = true;
+      
+      const nodeInfo = allNodeData.get(nodeId);
+      if (!nodeInfo) { animating = false; return; }
+      
+      // Find children (entities connected to this node)
+      const { edges } = lastGraphData;
+      const children = edges.filter(e => 
+        (e.from === nodeId || e.to === nodeId) && e.from !== 'root' && e.to !== 'root'
+      );
+      
+      if (children.length === 0) { animating = false; return; }
+      
+      const parentPos = nodeInfo.pos;
+      const color = new THREE.Color(nodeInfo.color || '#7c3aed');
+      
+      // Hide the original node and its label
+      nodeInfo.mesh.visible = false;
+      nodeInfo.label.visible = false;
+      nodeInfo.ring.visible = false;
+      
+      // Collect child IDs
+      const childIds = [];
+      children.forEach(e => {
+        const cid = e.from === nodeId ? e.to : e.from;
+        if (!childIds.includes(cid)) childIds.push(cid);
+      });
+      
+      const childRadius = 2.0;
+      const goldenRatio = (1 + Math.sqrt(5)) / 2;
+      
+      childIds.forEach((cid, i) => {
+        const childInfo = allNodeData.get(cid);
+        if (!childInfo) return;
+        
+        // Hide original child
+        childInfo.mesh.visible = false;
+        childInfo.label.visible = false;
+        
+        // Position on a small sphere around parent
+        const theta = 2 * Math.PI * i / goldenRatio;
+        const phi = Math.acos(1 - 2 * (i + 0.5) / childIds.length);
+        const targetPos = new THREE.Vector3(
+          parentPos.x + childRadius * Math.sin(phi) * Math.cos(theta),
+          parentPos.y + childRadius * Math.sin(phi) * Math.sin(theta),
+          parentPos.z + childRadius * Math.cos(phi)
+        );
+        
+        // Create child sphere
+        const childMesh = new THREE.Mesh(
+          new THREE.SphereGeometry(0.12, 8, 8),
+          new THREE.MeshPhongMaterial({ color: new THREE.Color(childInfo.color || '#22c55e'), emissive: new THREE.Color(childInfo.color || '#22c55e'), emissiveIntensity: 0.6 })
+        );
+        childMesh.position.copy(parentPos);
+        childMesh.userData = { targetPos: targetPos.clone(), startPos: parentPos.clone(), t: 0 };
+        graphGroup.add(childMesh);
+        childNodes.push(childMesh);
+        
+        // Child label
+        const div = document.createElement('div');
+        div.textContent = childInfo.labelText;
+        div.style.cssText = 'color:#cbd5e1;font-size:10px;font-weight:500;text-shadow:0 0 8px rgba(0,0,0,0.9);background:rgba(0,0,0,0.4);padding:2px 5px;border-radius:4px;pointer-events:none;';
+        const label = new CSS2DObject(div);
+        label.position.copy(parentPos);
+        graphGroup.add(label);
+        childLabels.push(label);
+        
+        // Edge from parent to child
+        const mid = new THREE.Vector3().addVectors(parentPos, targetPos).multiplyScalar(0.5);
+        const curve = new THREE.QuadraticBezierCurve3(parentPos.clone(), mid, targetPos.clone());
+        const line = new THREE.Line(
+          new THREE.BufferGeometry().setFromPoints(curve.getPoints(15)),
+          new THREE.LineBasicMaterial({ color: 0x7c3aed, transparent: true, opacity: 0.3 })
+        );
+        graphGroup.add(line);
+        childEdges.push(line);
+        
+        // Particle
+        const particle = new THREE.Mesh(
+          new THREE.SphereGeometry(0.06, 4, 4),
+          new THREE.MeshBasicMaterial({ color: 0xc4b5fd, transparent: true, opacity: 0.7 })
+        );
+        const c = curve.clone();
+        particle.userData = { curve: c, t: Math.random(), speed: 0.004 };
+        particle.position.copy(c.getPoint(particle.userData.t));
+        graphGroup.add(particle);
+        childParticles.push(particle);
+        
+        // Edge label
+        const edgeLabel = children.find(e => 
+          (e.from === nodeId && e.to === cid) || (e.to === nodeId && e.from === cid)
+        )?.label || 'related';
+        
+        if (edgeLabel) {
+          const cm = curve.getPoint(0.5);
+          const d = document.createElement('div');
+          d.textContent = edgeLabel;
+          d.style.cssText = 'color:#c4b5fd;font-size:9px;font-weight:500;background:rgba(15,15,35,0.8);padding:1px 5px;border-radius:3px;border:1px solid rgba(167,139,250,0.2);';
+          const l = new CSS2DObject(d);
+          l.position.copy(cm);
+          graphGroup.add(l);
+          childLabels.push(l);
+        }
+      });
+      
+      setTimeout(() => { animating = false; }, 600);
+    }
+    
+    function collapseAll() {
+      if (!expandedNodeId) return;
+      animating = true;
+      
+      // Restore original nodes
+      allNodeData.forEach((info, id) => {
+        if (info.mesh) info.mesh.visible = true;
+        if (info.label) info.label.visible = true;
+        if (info.ring) info.ring.visible = true;
+      });
+      
+      // Remove temporary children
+      childNodes.forEach(m => graphGroup.remove(m));
+      childLabels.forEach(l => graphGroup.remove(l));
+      childEdges.forEach(e => graphGroup.remove(e));
+      childParticles.forEach(p => graphGroup.remove(p));
+      childNodes = [];
+      childLabels = [];
+      childEdges = [];
+      childParticles = [];
+      
+      expandedNodeId = null;
+      setTimeout(() => { animating = false; }, 300);
+    }
+
+    const KNOWN = {
+      '特斯拉': '#f59e0b', '比亚迪': '#22c55e', '马斯克': '#ef4444',
+      '苹果': '#a855f7', '苹果公司': '#a855f7', '三星': '#3b82f6',
+      '谷歌': '#22c55e', '华为': '#ef4444', '高通': '#06b6d4',
+      '丰田': '#f59e0b', '大众': '#3b82f6', '奔驰': '#22c55e',
+      '宝马': '#3b82f6', '蔚来': '#22c55e', '小鹏': '#3b82f6',
+      '理想': '#f59e0b', 'Waymo': '#a855f7', 'Cruise': '#ef4444',
+      'OpenAI': '#22c55e', 'Microsoft': '#3b82f6', 'Google': '#22c55e',
+      'Amazon': '#f59e0b', 'Meta': '#3b82f6', 'Twitter': '#3b82f6',
+      '拜登': '#3b82f6', '特朗普': '#ef4444', '普京': '#ef4444',
+      '习近平': '#ef4444', '美联储': '#f59e0b', '国会': '#3b82f6',
+      'Model 3': '#f59e0b', 'iPhone': '#a855f7', 'Android': '#22c55e',
+      '小明': '#f59e0b', '陈家': '#3b82f6', '苹果': '#22c55e', '陈一': '#ef4444', '陈二': '#ef4444', '陈三': '#ef4444', '陈四': '#ef4444', '陈五': '#ef4444',
+    };
+
+    // ─── Robust Triplet Extraction ─────────────────────────
+    // Pure frontend — extracts subject-verb-object from any text
+    
+    const ACTION_VERBS = new Set([
+      '遇到','遇见','看见','找到','发现','发明','创建','收购','投资','发布','推出',
+      '宣布','任命','开除','支持','反对','加入','离开','打败','赢得','失去','获得',
+      '去','来','在','有','是','做','吃','喝','玩','买','卖','送','给','叫','说',
+      '告诉','问','回答','帮助','教','学','读','写','画','唱','跳','跑','走','飞',
+      '开','关','拿','放','推','拉','扔','接','打','敲','切','洗','擦','扫','煮',
+      '分给','送给','交给','发给','传给','带给','寄给','写给','卖给','买给',
+      'announced','launched','acquired','invested','bought','sold','hired',
+      'fired','joined','left','created','built','developed','proposed',
+      'approved','rejected','partnered','competed','beat','won','lost',
+      'met','visited','called','told','asked','helped','taught','learned',
+      'wrote','read','made','designed','led','managed','started','ended',
+      'discovered','invented','published','released','introduced','unveiled'
+    ]);
+
+    function extractGraph(text) {
+      const entities = new Map();
+      const edges = [];
+      const colors = ['#f59e0b','#22c55e','#3b82f6','#a855f7','#ef4444','#06b6d4','#ec4899','#14b8a6'];
+      
+      function addE(name) {
+        if (!name || name.length < 2) return;
+        const clean = name.trim().replace(/^[^a-zA-Z\u4e00-\u9fff]+|[^a-zA-Z\u4e00-\u9fff]+$/g, '');
+        if (clean.length < 2) return;
+        const key = clean.toLowerCase();
+        if (!entities.has(key)) {
+          entities.set(key, { id: clean, label: clean, color: colors[entities.size % colors.length] });
+        }
+      }
+
+      // Split into sentences
+      const sentences = text.split(/[。！？\n.!?]+/).filter(s => s.trim().length > 2);
+
+      for (const sentence of sentences) {
+        const trimmed = sentence.trim();
+        // Chinese text needs character-level segmentation
+        // Split on: spaces, commas, punctuation, or transitions between known entities
+        let words = trimmed.split(/[\s,，、；;：:！!？?]+/).filter(w => w.length > 0);
+        
+        // If no spaces found (pure Chinese), segment by known entities
+        // Check if any word is a long Chinese string that needs segmentation
+        const needsChineseSegment = words.some(w => w.length > 3 && /[\u4e00-\u9fff]/.test(w));
+        if (needsChineseSegment) {
+          // Find known entities in the text and use them as anchors
+          const foundEntities = Object.keys(KNOWN).filter(k => trimmed.includes(k));
+          if (foundEntities.length > 0) {
+            // Build words from entities + remaining text
+            const newWords = [];
+            let remaining = trimmed;
+            foundEntities.sort((a, b) => b.length - a.length); // longer first
+            while (remaining.length > 0) {
+              let matched = false;
+              for (const ent of foundEntities) {
+                if (remaining.startsWith(ent)) {
+                  newWords.push(ent);
+                  remaining = remaining.substring(ent.length);
+                  matched = true;
+                  break;
+                }
+              }
+              if (!matched) {
+                // Take one character at a time
+                newWords.push(remaining[0]);
+                remaining = remaining.substring(1);
+              }
+            }
+            words = newWords;
+          } else {
+            // No known entities — split by individual characters
+            words = trimmed.split('');
+          }
+        }
+        
+        // Merge adjacent verbs into compound verbs (e.g. "分" + "给" -> "分给")
+        const mergedWords = [];
+        for (let i = 0; i < words.length; i++) {
+          if (i < words.length - 1 && ACTION_VERBS.has(words[i]) && ACTION_VERBS.has(words[i+1])) {
+            mergedWords.push(words[i] + words[i+1]);
+            i++; // skip next
+          } else {
+            mergedWords.push(words[i]);
+          }
+        }
+        words = mergedWords;
+        
+        // Try to find verb and its neighbors
+        for (let i = 0; i < words.length; i++) {
+          const word = words[i].replace(/[，。、！？\s,\.!?\n"''"「」『』()（）\[\]]/g, '');
+          if (!word) continue;
+          
+          const isVerb = ACTION_VERBS.has(word.toLowerCase()) || 
+                         ACTION_VERBS.has(word);
+
+          if (isVerb) {
+            // Get subject (word before verb)
+            let subj = '';
+            for (let j = i - 1; j >= 0; j--) {
+              const w = words[j].replace(/[，。、！？\s,\.!?\n"''"「」『』()（）\[\]]/g, '');
+              if (w && w.length > 0) { subj = w; break; }
+            }
+            // Get object (word after verb) — only known entities
+            const objs = [];
+            for (let j = i + 1; j < words.length; j++) {
+              const w = words[j].replace(/[，。、！？\s,\.!?\n"''"「」『』()（）\[\]]/g, '');
+              if (!w || w.length === 0) continue;
+              if (ACTION_VERBS.has(w) || ACTION_VERBS.has(w.toLowerCase())) break;
+              if (['一个','五个','这个','那个','这些','那些','每个','很多','一些','所有'].includes(w)) continue;
+              // Only accept known entities or words > 1 char
+              if (w.length < 2) continue;
+              objs.push(w);
+            }
+
+            if (subj && objs.length > 0 && subj.length > 1) {
+              addE(subj);
+              objs.forEach(obj => {
+                if (obj && obj !== subj && obj.length > 1) {
+                  addE(obj);
+                  edges.push({ from: subj, to: obj, label: word });
+                }
+              });
+            }
+          }
+        }
+
+        // Also find capitalized names (English proper nouns)
+        const capNames = trimmed.match(/\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)*/g) || [];
+        const firstWords = trimmed.split(/[.!?\n]/).map(s => s.trim().split(/\s/)[0]).filter(Boolean);
+        for (const name of capNames) {
+          if (name.length > 2 && (!firstWords.includes(name) || name.length > 5)) {
+            addE(name);
+          }
+        }
+
+        // Known dictionary — this is the ONLY source of Chinese entities
+        Object.keys(KNOWN).forEach(k => {
+          if (trimmed.includes(k)) addE(k);
+        });
+      }
+
+      // Remove duplicates from edges
+      const uniqueEdges = [];
+      const edgeSet = new Set();
+      for (const e of edges) {
+        const key = e.from + '|' + e.to + '|' + e.label;
+        if (!edgeSet.has(key)) {
+          edgeSet.add(key);
+          uniqueEdges.push(e);
+        }
+      }
+
+      // Connect isolated entities to root
+      const connected = new Set();
+      uniqueEdges.forEach(e => { connected.add(e.from); connected.add(e.to); });
+      entities.forEach(e => { if (!connected.has(e.id)) uniqueEdges.push({ from: 'root', to: e.id, label: '' }); });
+
+      // ─── Smart parent-child detection ─────────────────────
+      // Detect entities with numeric suffixes (陈一,陈二...陈五 → child of 陈)
+      // Detect entities sharing a common prefix (iPhone 15, iPhone 16 → child of iPhone)
+      const parentChildEdges = [];
+      const entityIds = [...entities.keys()];
+      
+      // Chinese: detect 姓氏 + 数字/排行 patterns
+      const cnParentPattern = /^([\u4e00-\u9fff])([一二三四五六七八九十\d])$/;
+      const parentCandidates = new Map();
+      
+      for (const eid of entityIds) {
+        const match = eid.match(cnParentPattern);
+        if (match) {
+          const parentName = match[1];
+          const childNum = match[2];
+          if (entities.has(parentName)) {
+            parentCandidates.set(parentName, parentCandidates.get(parentName) || []);
+            parentCandidates.get(parentName).push({ id: eid, num: childNum });
+          }
+        }
+      }
+      
+      // Add parent-child edges
+      parentCandidates.forEach((children, parent) => {
+        children.forEach(child => {
+          parentChildEdges.push({ from: parent, to: child.id, label: '儿子' });
+        });
+      });
+      
+      // English: detect numbered entities (iPhone 15, iPhone 16 → child of iPhone)
+      const enParentPattern = /^(.+?)\s+(\d+)$/;
+      const enParents = new Map();
+      for (const eid of entityIds) {
+        const match = eid.match(enParentPattern);
+        if (match) {
+          const base = match[1];
+          if (entities.has(base)) {
+            enParents.set(base, enParents.get(base) || []);
+            enParents.get(base).push({ id: eid });
+          }
+        }
+      }
+      
+      enParents.forEach((children, parent) => {
+        children.forEach(child => {
+          parentChildEdges.push({ from: parent, to: child.id, label: 'version' });
+        });
+      });
+      
+      // Merge parent-child edges (avoid duplicates)
+      for (const pce of parentChildEdges) {
+        const key = pce.from + '|' + pce.to;
+        if (!edgeSet.has(key)) {
+          edgeSet.add(key);
+          uniqueEdges.push(pce);
+        }
+      }
+
+      return {
+        nodes: [{ id: 'root', label: '📄 Source', color: '#7c3aed' }, ...entities.values()],
+        edges: uniqueEdges
+      };
+    }
+    window.extractGraph = extractGraph; // Expose for testing
+
+    window.generateGraph = function() {
+      const text = document.getElementById('inputText').value.trim();
+      if (!text) return;
+      generateFromText(text);
+      trackEvent('generate', { source: 'text', tool: 'galaxymind' });
+    };
+
+    function generateFromText(text) {
+      // Clean up any expanded state
+      collapseAll();
+      while(graphGroup.children.length) graphGroup.remove(graphGroup.children[0]);
+      allNodeMeshes = [];
+      allNodeData = new Map();
+
+      const { nodes, edges } = extractGraph(text);
+      lastGraphData = { nodes, edges };
+      window.lastGraphData = lastGraphData;
+      
+      // ─── Pure Sphere Layout ───────────────────────────────
+      // All nodes evenly distributed on a sphere surface
+      // Edges drawn as arcs through the sphere with verb labels
+      
+      const nodeMap = {};
+      const positions = [];
+      const sphereRadius = 6;
+      const nonRoot = nodes.filter(n => n.id !== 'root');
+      const total = nonRoot.length;
+
+      // Fibonacci sphere for even distribution
+      const goldenRatio = (1 + Math.sqrt(5)) / 2;
+      nonRoot.forEach((n, i) => {
+        const theta = 2 * Math.PI * i / goldenRatio;
+        const phi = Math.acos(1 - 2 * (i + 0.5) / total);
+        const r = sphereRadius;
+        positions.push({
+          x: r * Math.sin(phi) * Math.cos(theta),
+          y: r * Math.sin(phi) * Math.sin(theta),
+          z: r * Math.cos(phi)
+        });
+        nodeMap[n.id] = { ...n, pos: positions[positions.length - 1] };
+      });
+
+      if (nodes.find(n => n.id === 'root')) {
+        positions.unshift({ x: 0, y: 0, z: 0 });
+        nodeMap['root'] = { id: 'root', label: '📄 Source', color: '#7c3aed', pos: { x: 0, y: 0, z: 0 } };
+      }
+
+      // Ring
+      const ringPts = [];
+      for (let i = 0; i <= 60; i++) {
+        const a = (i / 60) * Math.PI * 2;
+        ringPts.push(new THREE.Vector3(sphereRadius * Math.cos(a), sphereRadius * Math.sin(a), 0));
+      }
+      graphGroup.add(new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints(ringPts),
+        new THREE.LineBasicMaterial({ color: 0x7c3aed, transparent: true, opacity: 0.12 })
+      ));
+
+      // Draw nodes
+      nodes.forEach((n, i) => {
+        const pos = positions[i];
+        if (!pos) return;
+        const color = new THREE.Color(n.color);
+        const dot = new THREE.Mesh(
+          new THREE.SphereGeometry(n.id === 'root' ? 0.3 : 0.15, 8, 8),
+          new THREE.MeshPhongMaterial({ color, emissive: color, emissiveIntensity: 0.8 })
+        );
+        dot.position.set(pos.x, pos.y, pos.z);
+        dot.userData.nodeId = n.id;
+        graphGroup.add(dot);
+        allNodeMeshes.push(dot);
+
+        const div = document.createElement('div');
+        div.textContent = n.label;
+        div.style.cssText = 'color:#cbd5e1;font-size:11px;font-weight:500;text-shadow:0 0 8px rgba(0,0,0,0.9);background:rgba(0,0,0,0.4);padding:2px 6px;border-radius:4px;pointer-events:none;';
+        const label = new CSS2DObject(div);
+        label.position.set(pos.x, pos.y - 0.5, pos.z);
+        graphGroup.add(label);
+        
+        // Store for click interaction
+        const ringMesh = new THREE.Mesh(
+          new THREE.SphereGeometry((n.id === 'root' ? 0.3 : 0.15) * 3, 8, 8),
+          new THREE.MeshBasicMaterial({ color, wireframe: true, transparent: true, opacity: 0.08 })
+        );
+        ringMesh.position.set(pos.x, pos.y, pos.z);
+        graphGroup.add(ringMesh);
+        
+        allNodeData.set(n.id, { 
+          mesh: dot, label, ring: ringMesh, 
+          pos, color: n.color, labelText: n.label,
+          // Store connected children info
+          children: edges.filter(e => (e.from === n.id || e.to === n.id) && e.from !== 'root' && e.to !== 'root')
+            .map(e => ({ id: e.from === n.id ? e.to : e.from, label: e.label }))
+        });
+      });
+
+      // Draw edges — arcs through sphere with verb labels
+      edges.forEach(e => {
+        const from = nodeMap[e.from], to = nodeMap[e.to];
+        if (!from || !to) return;
+
+        const mid = new THREE.Vector3(
+          (from.pos.x + to.pos.x) / 2, (from.pos.y + to.pos.y) / 2, (from.pos.z + to.pos.z) / 2
+        );
+        const mLen = Math.sqrt(mid.x*mid.x + mid.y*mid.y + mid.z*mid.z);
+        if (mLen > 0.1) { mid.x *= 0.5/mLen; mid.y *= 0.5/mLen; mid.z *= 0.5/mLen; }
+
+        const curve = new THREE.QuadraticBezierCurve3(
+          new THREE.Vector3(from.pos.x, from.pos.y, from.pos.z),
+          mid,
+          new THREE.Vector3(to.pos.x, to.pos.y, to.pos.z)
+        );
+
+        const line = new THREE.Line(
+          new THREE.BufferGeometry().setFromPoints(curve.getPoints(30)),
+          new THREE.LineBasicMaterial({ color: 0x7c3aed, transparent: true, opacity: 0.35 })
+        );
+        graphGroup.add(line);
+
+        // Particle flowing along curve
+        const particle = new THREE.Mesh(
+          new THREE.SphereGeometry(0.08, 6, 6),
+          new THREE.MeshBasicMaterial({ color: 0xc4b5fd, transparent: true, opacity: 0.9 })
+        );
+        const c = curve.clone();
+        particle.userData = { curve: c, t: Math.random(), speed: 0.003 + Math.random() * 0.004 };
+        particle.position.copy(c.getPoint(particle.userData.t));
+        graphGroup.add(particle);
+
+        // Verb label at curve midpoint
+        if (e.label) {
+          const cm = curve.getPoint(0.5);
+          const d = document.createElement('div');
+          d.textContent = e.label;
+          d.style.cssText = 'color:#c4b5fd;font-size:10px;font-weight:500;background:rgba(15,15,35,0.8);padding:2px 7px;border-radius:4px;border:1px solid rgba(167,139,250,0.3);';
+          const l = new CSS2DObject(d);
+          l.position.copy(cm);
+          graphGroup.add(l);
+        }
+      });
+    }
+
+    // ─── Animation ──────────────────────────────────────────
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      graphGroup.children.forEach(child => {
+        if (child.userData && child.userData.curve) {
+          child.userData.t += child.userData.speed;
+          if (child.userData.t > 1) child.userData.t = 0;
+          child.position.copy(child.userData.curve.getPoint(child.userData.t));
+        }
+      });
+      renderer.render(scene, camera);
+      labelRenderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      labelRenderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // ─── Tab Switching ──────────────────────────────────────
+    window.switchTab = function(tab) {
+      document.querySelectorAll('.input-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+      ['text','url','file'].forEach(t => document.getElementById('tab-' + t).classList.toggle('hidden', t !== tab));
+    };
+
+    // ─── Examples ───────────────────────────────────────────
+    window.loadExample = function(idx) {
+      const examples = [
+        '',
+        `Elon Musk announced Tesla's new self-driving system. Tesla shares rose 5% after the announcement. Competitors like Waymo and Cruise are also developing autonomous driving technology. Google and Apple are also working on self-driving cars.`,
+        `Microsoft announced a $10 billion investment in OpenAI. Google responded with its own AI initiative. Amazon and Meta are also competing in the AI space.`,
+        `特斯拉宣布 Model 3 降价 20%。比亚迪跟进降价 15%。小鹏汽车表示不会降价。马斯克表示这是为了应对竞争。分析师认为这会影响整个行业。`,
+        `President Biden announced new climate policies. Former President Trump criticized the plan. Congress is divided on the issue. The Federal Reserve warned about economic impacts.`
+      ];
+      document.getElementById('inputText').value = examples[idx];
+      switchTab('text');
+      generateGraph();
+    };
+
+    // ─── URL Fetch ──────────────────────────────────────────
+    window.fetchUrl = function() {
+      const url = document.getElementById('inputUrl').value.trim();
+      if (!url) return;
+      // Use CORS proxy
+      const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
+      document.getElementById('inputUrl').placeholder = 'Fetching...';
+      
+      fetch(proxyUrl)
+        .then(r => r.json())
+        .then(data => {
+          const html = data.contents;
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(html, 'text/html');
+          // Get main content
+          const article = doc.querySelector('article') || doc.querySelector('main') || doc.querySelector('body');
+          const text = article ? article.textContent.substring(0, 3000) : 'Could not extract content.';
+          document.getElementById('inputText').value = text;
+          switchTab('text');
+          generateGraph();
+          document.getElementById('inputUrl').placeholder = 'Paste a news/article URL...';
+          trackEvent('fetch_url', { tool: 'galaxymind' });
+        })
+        .catch(() => {
+          document.getElementById('inputUrl').placeholder = 'Failed to fetch. Try pasting text directly.';
+        });
+    };
+
+    // ─── File Upload ────────────────────────────────────────
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      document.getElementById('fileStatus').textContent = '📎 ' + file.name + ' (' + (file.size / 1024).toFixed(0) + ' KB)';
+    });
+
+    window.processFile = function() {
+      const file = document.getElementById('fileInput').files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      const ext = file.name.split('.').pop().toLowerCase();
+
+      if (ext === 'pdf') {
+        reader.onload = async function(e) {
+          const data = new Uint8Array(e.target.result);
+          const pdf = await pdfjsLib.getDocument({ data }).promise;
+          let text = '';
+          for (let i = 1; i <= Math.min(pdf.numPages, 10); i++) {
+            const page = await pdf.getPage(i);
+            const content = await page.getTextContent();
+            text += content.items.map(s => s.str).join(' ') + '\n';
+          }
+          document.getElementById('inputText').value = text.substring(0, 5000);
+          switchTab('text');
+          generateGraph();
+          trackEvent('upload_pdf', { tool: 'galaxymind' });
+        };
+        reader.readAsArrayBuffer(file);
+      } else if (ext === 'docx') {
+        reader.onload = function(e) {
+          // For DOCX, use simple text extraction via JSZip-like approach
+          // Since we can't use mammoth easily, show instructions
+          document.getElementById('inputText').value = 'DOCX file loaded: ' + file.name + '\nPlease copy the text manually for now. DOCX parsing coming soon.';
+          switchTab('text');
+          generateGraph();
+        };
+        reader.readAsText(file);
+      }
+      document.getElementById('fileStatus').textContent = 'Processing...';
+    };
+
+    // ─── Auto-generate on load ──────────────────────────────
+    setTimeout(generateGraph, 300);
+  </script>
+</body>
+</html>
