@@ -474,16 +474,26 @@
               const w = words[j].replace(/[，。、！？\s,\.!?\n"''"「」『』()（）\[\]]/g, '');
               if (w && w.length > 0) { subj = w; break; }
             }
-            // Get object (word after verb)
-            let obj = '';
+            // Get object (word after verb) — collect multiple objects
+            const objs = [];
             for (let j = i + 1; j < words.length; j++) {
               const w = words[j].replace(/[，。、！？\s,\.!?\n"''"「」『』()（）\[\]]/g, '');
-              if (w && w.length > 0) { obj = w; break; }
+              if (!w || w.length === 0) continue;
+              // Stop at next verb or punctuation-like word
+              if (ACTION_VERBS.has(w) || ACTION_VERBS.has(w.toLowerCase())) break;
+              // Skip filler words
+              if (['一个','五个','这个','那个','这些','那些','每个','很多','一些','所有'].includes(w)) continue;
+              objs.push(w);
             }
 
-            if (subj && obj && subj !== obj) {
-              addE(subj); addE(obj);
-              edges.push({ from: subj, to: obj, label: word });
+            if (subj && objs.length > 0) {
+              addE(subj);
+              objs.forEach(obj => {
+                if (obj && obj !== subj && obj.length > 0) {
+                  addE(obj);
+                  edges.push({ from: subj, to: obj, label: word });
+                }
+              });
             }
           }
         }
