@@ -184,31 +184,70 @@
       'Model 3': '#f59e0b', 'iPhone': '#a855f7', 'Android': '#22c55e',
     };
 
-    const VERBS = ['发布','推出','收购','投资','合作','竞争','反对','支持','宣布','推出','推出','降价','涨价','起诉','辞职','当选','任命','推出','研发'];
+    const VERBS = ['发布','推出','收购','投资','合作','竞争','反对','支持','宣布','降价','涨价','起诉','辞职','当选','任命','研发'];
 
-    function extractGraph(text) {
-      const nodes = [{ id: 'root', label: '📄 Source', color: '#7c3aed' }];
-      const edges = [];
+    // Smart entity extraction — handles any text, not just KNOWN dictionary
+    function extractEntities(text) {
+      // First check KNOWN dictionary
       const found = Object.keys(KNOWN).filter(k => text.includes(k));
-      found.forEach(name => {
-        nodes.push({ id: name, label: name, color: KNOWN[name] });
-        edges.push({ from: 'root', to: name });
-      });
+      
+      // If KNOWN found nothing, use generic extraction
+      if (found.length === 0) {
+        // Extract capitalized words (English) or 2-4 char Chinese words
+        const enWords = text.match(/\b[A-Z][a-z]+\b/g) || [];
+        const cnWords = text.match(/[\u4e00-\u9fff]{2,4}/g) || [];
+        
+        // Filter common words
+        const stopWords = ['this','that','with','from','they','have','been','will','their','about','would','could','should','after','before','between','没有','什么','可以','一个','这个','那个','我们','他们','你们','因为','所以','但是','如果','虽然','而且','或者','还是','不是','就是','只是','但是','已经','还是','可以','所有','一些','这些','那些','每个','很多'];
+        
+        const all = [...new Set([...enWords, ...cnWords])].filter(w => !stopWords.includes(w) && w.length > 1);
+        
+        if (all.length > 0) {
+          const colors = ['#f59e0b','#22c55e','#3b82f6','#a855f7','#ef4444','#06b6d4','#ec4899','#14b8a6'];
+          return all.slice(0, 8).map((w, i) => ({
+            id: w, label: w, color: colors[i % colors.length]
+          }));
+        }
+      }
+      
+      return found.map(name => ({ id: name, label: name, color: KNOWN[name] }));
+    }
+
+    function extractRelations(text, entities) {
+      const edges = [];
+      const entityIds = entities.map(e => e.id);
+      
+      // Find verbs between entities
       VERBS.forEach(v => {
         let idx = text.indexOf(v);
         while (idx !== -1) {
-          const before = text.substring(Math.max(0, idx - 25), idx);
-          const after = text.substring(idx + v.length, idx + v.length + 25);
-          const subj = found.find(e => before.includes(e));
-          const obj = found.find(e => after.includes(e));
-          if (subj && obj) {
-            if (!edges.find(e => e.from === subj && e.to === obj && e.label === v)) {
+          const before = text.substring(Math.max(0, idx - 30), idx);
+          const after = text.substring(idx + v.length, idx + v.length + 30);
+          const subj = entityIds.find(e => before.includes(e));
+          const obj = entityIds.find(e => after.includes(e));
+          if (subj && obj && subj !== obj) {
+            if (!edges.find(e => e.from === subj && e.to === obj)) {
               edges.push({ from: subj, to: obj, label: v });
             }
           }
           idx = text.indexOf(v, idx + 1);
         }
       });
+      
+      // If no verb-based relations found, connect entities to root
+      if (edges.length === 0 && entities.length > 0) {
+        entities.forEach(e => {
+          edges.push({ from: 'root', to: e.id });
+        });
+      }
+      
+      return edges;
+    }
+
+    function extractGraph(text) {
+      const entities = extractEntities(text);
+      const edges = extractRelations(text, entities);
+      const nodes = [{ id: 'root', label: '📄 Source', color: '#7c3aed' }, ...entities];
       return { nodes, edges };
     }
 
