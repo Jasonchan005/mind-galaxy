@@ -23,7 +23,7 @@
   <style>
     *{margin:0;padding:0;box-sizing:border-box;}
     body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f0f23;color:#e2e8f0;overflow:hidden;height:100vh;}
-    #header{position:fixed;top:0;left:0;right:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:10px 20px;background:rgba(15,15,35,0.92);border-bottom:1px solid rgba(51,65,85,0.3);backdrop-filter:blur(10px);}
+    #header{position:fixed;top:0;left:0;right:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:10px 20px;background:rgba(15,15,35,0.92);border-bottom:1px solid rgba(51,65,85,0.3);}
     #header h1{font-size:18px;font-weight:800;background:linear-gradient(135deg,#a78bfa,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
     .hdr-btns{display:flex;gap:8px;}
     .hdr-btns button{padding:6px 14px;border:1px solid #334155;border-radius:6px;background:rgba(30,41,59,0.8);color:#94a3b8;font-size:12px;cursor:pointer;font-weight:500;}
@@ -31,24 +31,24 @@
     .hdr-btns button.on{background:#7c3aed;color:#fff;border-color:#7c3aed;}
     #canvas{position:fixed;top:50px;left:0;right:0;bottom:0;cursor:grab;}
     #canvas:active{cursor:grabbing;}
-    #inp{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:30;width:90%;max-width:560px;display:flex;gap:6px;}
-    #inp textarea{flex:1;padding:10px 14px;border:1px solid #334155;border-radius:10px;background:rgba(15,23,42,0.95);color:#e2e8f0;font-size:13px;resize:none;min-height:42px;max-height:80px;outline:none;font-family:inherit;}
+    #inp{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:30;width:90%;max-width:560px;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}
+    #inp textarea{flex:1;min-width:200px;padding:10px 14px;border:1px solid #334155;border-radius:10px;background:rgba(15,23,42,0.95);color:#e2e8f0;font-size:13px;resize:none;min-height:42px;max-height:80px;outline:none;font-family:inherit;}
     #inp textarea:focus{border-color:#7c3aed;}
     #inp button{padding:10px 20px;background:#7c3aed;border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;}
     #inp button:hover{background:#6d28d9;}
+    #inp .ex{display:flex;gap:8px;align-items:center;font-size:11px;color:#475569;}
+    #inp .ex span{cursor:pointer;padding:2px 8px;border-radius:4px;border:1px solid #334155;}
+    #inp .ex span:hover{border-color:#7c3aed;color:#a78bfa;}
     #editor{position:fixed;display:none;z-index:60;background:rgba(15,23,42,0.98);border:1px solid #334155;border-radius:12px;padding:16px;min-width:220px;box-shadow:0 20px 60px rgba(0,0,0,0.5);}
     #editor input{width:100%;padding:8px 10px;border:1px solid #334155;border-radius:6px;background:rgba(0,0,0,0.3);color:#e2e8f0;font-size:13px;outline:none;margin-bottom:8px;}
     #editor input:focus{border-color:#7c3aed;}
     #editor .ea{display:flex;gap:6px;}
     #editor .ea button{flex:1;padding:6px;border-radius:6px;border:none;font-size:12px;cursor:pointer;font-weight:500;}
     #editor .ea .sv{background:#7c3aed;color:#fff;}
-    #editor .ea .sv:hover{background:#6d28d9;}
     #editor .ea .del{background:rgba(239,68,68,0.2);color:#ef4444;border:1px solid rgba(239,68,68,0.3);}
-    #editor .ea .del:hover{background:rgba(239,68,68,0.3);}
     #editor .ea .add{background:rgba(34,197,94,0.2);color:#22c55e;border:1px solid rgba(34,197,94,0.3);}
-    #editor .ea .add:hover{background:rgba(34,197,94,0.3);}
-    #exportModal{position:fixed;display:none;z-index:70;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center;}
-    #exportModal.on{display:flex;}
+    #exportModal{position:fixed;display:none;z-index:70;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);}
+    #exportModal.on{display:flex;align-items:center;justify-content:center;}
     #exportModal .md{background:rgba(15,23,42,0.98);border:1px solid #334155;border-radius:16px;padding:24px;min-width:300px;max-width:400px;}
     #exportModal h3{font-size:16px;margin-bottom:16px;color:#e2e8f0;}
     #exportModal .fm{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
@@ -58,335 +58,467 @@
     #exportModal .ea2{display:flex;gap:8px;}
     #exportModal .ea2 button{flex:1;padding:10px;border-radius:8px;border:none;font-size:13px;cursor:pointer;font-weight:600;}
     #exportModal .ea2 .go{background:#7c3aed;color:#fff;}
-    #exportModal .ea2 .go:hover{background:#6d28d9;}
     #exportModal .ea2 .no{background:#1e293b;border:1px solid #334155;color:#94a3b8;}
-    #exportModal .ea2 .no:hover{border-color:#64748b;}
     .tag{position:fixed;bottom:4px;right:12px;font-size:10px;color:#334155;z-index:15;}
   </style>
 </head>
 <body>
+
 <div id="header">
-  <h1>🌌 Mind-Galaxy</h1>
+  <h1>GalaxyMind</h1>
   <div class="hdr-btns">
-    <button onclick="toggleView()" id="vbtn">🌐 3D</button>
-    <button onclick="showExport()">📥 Export</button>
+    <button onclick="toggleView()" id="vbtn">3D</button>
+    <button onclick="showExport()">Export</button>
   </div>
 </div>
 
 <canvas id="canvas"></canvas>
 
-  <div id="inp">
-    <textarea id="txt" placeholder="Paste text to auto-generate a mind map..."></textarea>
-    <button onclick="generate()">🚀 Gen</button>
-    <div style="position:absolute;right:80px;bottom:-22px;display:flex;gap:4px;">
-      <span style="font-size:10px;color:#475569;cursor:pointer;" onclick="loadExample(1)">EN</span>
-      <span style="font-size:10px;color:#475569;cursor:pointer;" onclick="loadExample(2)">中文</span>
-      <span style="font-size:10px;color:#475569;cursor:pointer;" onclick="loadExample(3)">Clear</span>
-    </div>
+<div id="inp">
+  <textarea id="txt" placeholder="Paste text to generate a mind map..."></textarea>
+  <button onclick="genTree()">Generate</button>
+  <div class="ex">
+    <span onclick="loadEx(0)">EN</span>
+    <span onclick="loadEx(1)">CN</span>
+    <span onclick="clearAll()">Clear</span>
   </div>
+</div>
 
 <div id="editor">
-  <input id="edInput" placeholder="Node label..." maxlength="30">
+  <input id="edInp" placeholder="Node label..." maxlength="30">
   <div class="ea">
-    <button class="sv" onclick="saveEdit()">Save</button>
+    <button class="sv" onclick="saveEd()">Save</button>
     <button class="add" onclick="addChild()">+Child</button>
-    <button class="del" onclick="delEdit()">Del</button>
+    <button class="del" onclick="delNode()">Del</button>
   </div>
 </div>
 
 <div id="exportModal">
   <div class="md">
-    <h3>📥 Export</h3>
+    <h3>Export</h3>
     <div class="fm" id="efm">
-      <div class="fb on" data-f="png" onclick="selFmt('png')">🖼️ PNG</div>
-      <div class="fb" data-f="jpg" onclick="selFmt('jpg')">🖼️ JPG</div>
-      <div class="fb" data-f="pdf" onclick="selFmt('pdf')">📄 PDF</div>
-      <div class="fb" data-f="docx" onclick="selFmt('docx')">📝 Word</div>
+      <div class="fb on" data-f="png" onclick="pickFmt('png')">PNG</div>
+      <div class="fb" data-f="jpg" onclick="pickFmt('jpg')">JPG</div>
+      <div class="fb" data-f="pdf" onclick="pickFmt('pdf')">PDF</div>
+      <div class="fb" data-f="docx" onclick="pickFmt('docx')">Word</div>
     </div>
     <div class="ea2">
-      <button class="go" onclick="doExport()">Download</button>
-      <button class="no" onclick="hideExport()">Cancel</button>
+      <button class="go" onclick="doExp()">Download</button>
+      <button class="no" onclick="hideExp()">Cancel</button>
     </div>
   </div>
 </div>
 
-<div class="tag">Mind-Galaxy by JCS Labs</div>
+<div class="tag">by JCS Labs</div>
 
 <script>
-// ─── Data ──────────────────────────────────────────────
-let data = {id:'r',label:'📄 Source',children:[],x:0,y:0,expanded:true};
-let sel=null, nid=1, mode='2d';
+// ─── Core Data ──────────────────────────────────────────
+var root = {id:'r', label:'Source', children:[], expanded:true};
+var selected = null;
+var nid = 0;
+var canvas = document.getElementById('canvas');
+var ctx = canvas.getContext('2d');
+var offX = 0, offY = 0;
+var dragging = false;
+var dragX = 0, dragY = 0;
 
-// ─── Canvas ────────────────────────────────────────────
-const c=document.getElementById('canvas'), cx=c.getContext('2d');
-let off={x:0,y:0}, drag=null, zm=1;
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight - 50;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
 
-function resize(){c.width=window.innerWidth; c.height=window.innerHeight-50;}
-window.addEventListener('resize',resize); resize();
-
-// ─── Render ────────────────────────────────────────────
-function render(){
-  cx.clearRect(0,0,c.width,c.height);
-  draw(data,c.width/2+off.x,70+off.y,0);
+// ─── Draw Tree ──────────────────────────────────────────
+function drawTree() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawNode(root, canvas.width/2 + offX, 70 + offY, 0);
 }
 
-function draw(n,x,y,lv){
-  const w=Math.max(80,n.label.length*9+20), h=32;
-  const s=n.id===sel, ch=n.children&&n.children.length>0;
-  
-  // shadow
-  cx.shadowColor=s?'rgba(124,58,237,0.4)':'rgba(0,0,0,0.3)';
-  cx.shadowBlur=s?15:5;
-  
-  // bg
-  cx.beginPath();
-  cx.roundRect(x-w/2,y-h/2,w,h,8);
-  const g=cx.createRadialGradient(x,y,0,x,y,h);
-  g.addColorStop(0,s?'#7c3aed':'#1e293b');
-  g.addColorStop(1,s?'#6d28d9':'#0f172a');
-  cx.fillStyle=g; cx.fill();
-  cx.strokeStyle=s?'#a78bfa':'#334155';
-  cx.lineWidth=s?2:1; cx.stroke();
-  cx.shadowBlur=0;
-  
-  // label
-  cx.fillStyle='#e2e8f0';
-  cx.font='13px Inter,sans-serif';
-  cx.textAlign='center'; cx.textBaseline='middle';
-  cx.fillText(n.label,x,y);
-  
-  // +/- indicator
-  if(ch){
-    cx.fillStyle='#64748b'; cx.font='11px sans-serif';
-    cx.fillText(n.expanded===false?'+':'−',x+w/2-6,y);
+function drawNode(node, x, y, level) {
+  if (!node) return;
+  var w = Math.max(70, node.label.length * 8 + 24);
+  var h = 30;
+  var isSel = node.id === selected;
+  var hasKids = node.children && node.children.length > 0;
+
+  ctx.shadowColor = isSel ? 'rgba(124,58,237,0.4)' : 'rgba(0,0,0,0.3)';
+  ctx.shadowBlur = isSel ? 12 : 4;
+
+  ctx.beginPath();
+  ctx.roundRect(x - w/2, y - h/2, w, h, 7);
+  var grad = ctx.createRadialGradient(x, y, 0, x, y, h);
+  grad.addColorStop(0, isSel ? '#7c3aed' : '#1e293b');
+  grad.addColorStop(1, isSel ? '#6d28d9' : '#0f172a');
+  ctx.fillStyle = grad;
+  ctx.fill();
+  ctx.strokeStyle = isSel ? '#a78bfa' : '#334155';
+  ctx.lineWidth = isSel ? 2 : 1;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  ctx.fillStyle = '#e2e8f0';
+  ctx.font = '13px Inter, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(node.label, x, y);
+
+  if (hasKids) {
+    ctx.fillStyle = '#64748b';
+    ctx.font = '11px sans-serif';
+    ctx.fillText(node.expanded === false ? '+' : '-', x + w/2 - 4, y);
   }
-  
-  // children
-  if(ch&&n.expanded!==false){
-    const sp=Math.min(120,400/(n.children.length+1));
-    const th=(n.children.length-1)*sp;
-    const fy=y+60-th/2;
-    n.children.forEach((cld,i)=>{
-      const cy=fy+i*sp, cx2=x+180;
-      // line
-      cx.beginPath();
-      cx.moveTo(x+w/2,y); cx.lineTo(cx2-40,y);
-      cx.lineTo(cx2-40,cy); cx.lineTo(cx2-w/2,cy);
-      cx.strokeStyle='rgba(124,58,237,0.3)'; cx.lineWidth=1.5; cx.stroke();
-      // relation
-      if(cld.rel){
-        cx.fillStyle='#a78bfa'; cx.font='9px sans-serif';
-        cx.textAlign='center'; cx.fillText(cld.rel,x+w/2+90,(y+cy)/2-5);
+
+  if (hasKids && node.expanded !== false) {
+    var spacing = Math.min(110, 360 / (node.children.length + 1));
+    var totalH = (node.children.length - 1) * spacing;
+    var firstY = y + 55 - totalH / 2;
+
+    for (var i = 0; i < node.children.length; i++) {
+      var child = node.children[i];
+      var cy = firstY + i * spacing;
+      var cx = x + 170;
+
+      ctx.beginPath();
+      ctx.moveTo(x + w/2, y);
+      ctx.lineTo(cx - 35, y);
+      ctx.lineTo(cx - 35, cy);
+      ctx.lineTo(cx - w/2, cy);
+      ctx.strokeStyle = 'rgba(124,58,237,0.25)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      if (child.rel) {
+        ctx.fillStyle = '#a78bfa';
+        ctx.font = '9px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(child.rel, x + w/2 + 80, (y + cy) / 2 - 4);
       }
-      draw(cld,cx2,cy,lv+1);
-    });
+
+      drawNode(child, cx, cy, level + 1);
+    }
   }
 }
 
-// ─── Hit Test ──────────────────────────────────────────
-function hit(n,mx,my,x,y){
-  const w=Math.max(80,n.label.length*9+20),h=32;
-  if(mx>=x-w/2&&mx<=x+w/2&&my>=y-h/2&&my<=y+h/2) return n;
-  if(n.children&&n.expanded!==false){
-    const sp=Math.min(120,400/(n.children.length+1));
-    const th=(n.children.length-1)*sp;
-    const fy=y+60-th/2;
-    for(let i=0;i<n.children.length;i++){
-      const r=hit(n.children[i],mx,my,x+180,fy+i*sp);
-      if(r) return r;
+// ─── Hit Test ───────────────────────────────────────────
+function hitTest(node, mx, my, x, y) {
+  if (!node) return null;
+  var w = Math.max(70, node.label.length * 8 + 24);
+  var h = 30;
+  if (mx >= x - w/2 && mx <= x + w/2 && my >= y - h/2 && my <= y + h/2) return node;
+  if (node.children && node.expanded !== false) {
+    var spacing = Math.min(110, 360 / (node.children.length + 1));
+    var totalH = (node.children.length - 1) * spacing;
+    var firstY = y + 55 - totalH / 2;
+    for (var i = 0; i < node.children.length; i++) {
+      var result = hitTest(node.children[i], mx, my, x + 170, firstY + i * spacing);
+      if (result) return result;
     }
   }
   return null;
 }
 
-// ─── Interaction ───────────────────────────────────────
-c.addEventListener('mousedown',e=>{
-  const r=c.getBoundingClientRect();
-  const mx=e.clientX-r.left, my=e.clientY-r.top;
-  const h=hit(data,mx,my,c.width/2+off.x,70+off.y);
-  if(h){ sel=h.id; render(); showEditor(h,e.clientX,e.clientY); }
-  else{ sel=null; hideEditor(); drag={x:e.clientX,y:e.clientY}; render(); }
-});
-
-c.addEventListener('mousemove',e=>{
-  if(drag){ off.x+=(e.clientX-drag.x)*0.8; off.y+=(e.clientY-drag.y)*0.8; drag={x:e.clientX,y:e.clientY}; render(); }
-});
-
-c.addEventListener('mouseup',()=>{drag=null;});
-c.addEventListener('mouseleave',()=>{drag=null;});
-
-c.addEventListener('dblclick',e=>{
-  const r=c.getBoundingClientRect();
-  const mx=e.clientX-r.left, my=e.clientY-r.top;
-  const h=hit(data,mx,my,c.width/2+off.x,70+off.y);
-  if(h&&h.children&&h.children.length>0){
-    h.expanded=h.expanded===false?true:false; render();
+// ─── Mouse Events ──────────────────────────────────────
+canvas.addEventListener('mousedown', function(e) {
+  var rect = canvas.getBoundingClientRect();
+  var mx = e.clientX - rect.left;
+  var my = e.clientY - rect.top;
+  var hit = hitTest(root, mx, my, canvas.width/2 + offX, 70 + offY);
+  if (hit) {
+    selected = hit.id;
+    drawTree();
+    showEditor(hit, e.clientX, e.clientY);
+  } else {
+    selected = null;
+    hideEditor();
+    dragging = true;
+    dragX = e.clientX;
+    dragY = e.clientY;
+    drawTree();
   }
 });
 
-// ─── Editor ────────────────────────────────────────────
-function showEditor(n,cx,cy){
-  const ed=document.getElementById('editor');
-  document.getElementById('edInput').value=n.label;
-  ed.style.display='block';
-  ed.style.left=Math.min(cx,window.innerWidth-240)+'px';
-  ed.style.top=Math.min(cy,window.innerHeight-180)+'px';
-  ed.dataset.id=n.id;
-  document.getElementById('edInput').focus();
-  document.getElementById('edInput').select();
+canvas.addEventListener('mousemove', function(e) {
+  if (dragging) {
+    offX += (e.clientX - dragX);
+    offY += (e.clientY - dragY);
+    dragX = e.clientX;
+    dragY = e.clientY;
+    drawTree();
+  }
+});
+
+canvas.addEventListener('mouseup', function() { dragging = false; });
+canvas.addEventListener('mouseleave', function() { dragging = false; });
+
+canvas.addEventListener('dblclick', function(e) {
+  var rect = canvas.getBoundingClientRect();
+  var mx = e.clientX - rect.left;
+  var my = e.clientY - rect.top;
+  var hit = hitTest(root, mx, my, canvas.width/2 + offX, 70 + offY);
+  if (hit && hit.children && hit.children.length > 0) {
+    hit.expanded = hit.expanded === false ? true : false;
+    drawTree();
+  }
+});
+
+// ─── Editor ─────────────────────────────────────────────
+function findNode(id, node) {
+  if (node.id === id) return node;
+  if (node.children) for (var i = 0; i < node.children.length; i++) {
+    var r = findNode(id, node.children[i]); if (r) return r;
+  }
+  return null;
 }
-function hideEditor(){document.getElementById('editor').style.display='none';}
-function find(id,n){if(n.id===id)return n;if(n.children)for(const c of n.children){const r=find(id,c);if(r)return r;}return null;}
-function parent(id,n){if(n.children)for(const c of n.children){if(c.id===id)return n;const r=parent(id,c);if(r)return r;}return null;}
 
-window.saveEdit=function(){
-  const id=document.getElementById('editor').dataset.id;
-  const lbl=document.getElementById('edInput').value.trim();
-  if(!lbl)return;
-  const n=find(id,data); if(n){n.label=lbl;render();trackEvent('edit',{tool:'mg'});}
-  hideEditor();
-};
-window.addChild=function(){
-  const id=document.getElementById('editor').dataset.id;
-  const n=find(id,data); if(n){nid++;if(!n.children)n.children=[];n.children.push({id:'n'+nid,label:'New',children:[],expanded:true});n.expanded=true;render();trackEvent('add',{tool:'mg'});}
-  hideEditor();
-};
-window.delEdit=function(){
-  const id=document.getElementById('editor').dataset.id;
-  if(id==='r')return;
-  const p=parent(id,data); if(p){p.children=p.children.filter(c=>c.id!==id);render();trackEvent('del',{tool:'mg'});}
-  hideEditor();
-};
+function findParent(id, node) {
+  if (node.children) for (var i = 0; i < node.children.length; i++) {
+    if (node.children[i].id === id) return node;
+    var r = findParent(id, node.children[i]); if (r) return r;
+  }
+  return null;
+}
 
-// ─── Generate ──────────────────────────────────────────
-window.generate=function(){
-  const txt=document.getElementById('txt').value.trim();
-  if(!txt)return;
-  const sents=txt.split(/[。！？\n.!?]+/).filter(s=>s.trim().length>3);
-  data={id:'r',label:'📄 Source',children:[],x:0,y:0,expanded:true};
-  nid=0;
-  
-  const verbs=['founded','created','launched','developed','built','acquired','invested','partnered','announced','released','introduced','unveiled','published','discovered','invented','designed','led','managed','started','ended','won','lost','beat','joined','left','hired','fired','approved','rejected','proposed'];
-  const cn=['发布','推出','收购','投资','合作','竞争','宣布','创建','发明','发现','开发','设计','领导','管理','开始','结束','打败','赢得','加入','离开','任命','开除','批准','拒绝','提出'];
-  
-  for(const s of sents){
-    const t=s.trim();
-    // Try to segment Chinese by known entities
-    let words=t.split(/[\s,，、]+/).filter(w=>w.length>0);
-    if(words.length<=2&&/[\u4e00-\u9fff]/.test(t)){
-      // For Chinese text, split by known delimiters
-      const parts = t.split(/[，。、；：\s]+/).filter(w=>w.length>0);
-      if(parts.length>1) words=parts;
-      else words=t.match(/[\u4e00-\u9fff]{2,4}/g)||[];
+function showEditor(node, cx, cy) {
+  var ed = document.getElementById('editor');
+  document.getElementById('edInp').value = node.label;
+  ed.style.display = 'block';
+  ed.style.left = Math.min(cx, window.innerWidth - 240) + 'px';
+  ed.style.top = Math.min(cy, window.innerHeight - 160) + 'px';
+  ed.dataset.id = node.id;
+  document.getElementById('edInp').focus();
+  document.getElementById('edInp').select();
+}
+
+function hideEditor() {
+  document.getElementById('editor').style.display = 'none';
+}
+
+function saveEd() {
+  var id = document.getElementById('editor').dataset.id;
+  var label = document.getElementById('edInp').value.trim();
+  if (!label) return;
+  var node = findNode(id, root);
+  if (node) { node.label = label; drawTree(); }
+  hideEditor();
+}
+
+function addChild() {
+  var id = document.getElementById('editor').dataset.id;
+  var node = findNode(id, root);
+  if (node) {
+    nid++;
+    if (!node.children) node.children = [];
+    node.children.push({id:'n'+nid, label:'New', children:[], expanded:true});
+    node.expanded = true;
+    drawTree();
+  }
+  hideEditor();
+}
+
+function delNode() {
+  var id = document.getElementById('editor').dataset.id;
+  if (id === 'r') return;
+  var parent = findParent(id, root);
+  if (parent) {
+    parent.children = parent.children.filter(function(c) { return c.id !== id; });
+    selected = null;
+    drawTree();
+  }
+  hideEditor();
+}
+
+// ─── Generate Tree from Text ───────────────────────────
+function genTree() {
+  var text = document.getElementById('txt').value.trim();
+  if (!text) return;
+
+  root = {id:'r', label:'Source', children:[], expanded:true};
+  nid = 0;
+
+  var sentences = text.split(/[.。！？\n!?]+/);
+  var verbs = ['founded','created','launched','developed','built','acquired','invested','partnered','announced','released','introduced','unveiled','published','discovered','invented','designed','led','managed','started','ended','won','lost','joined','left','hired','fired','approved','rejected','proposed'];
+  var cnVerbs = ['发布','推出','收购','投资','合作','竞争','宣布','创建','发明','发现','开发','设计','领导','管理','开始','结束','打败','赢得','加入','离开','任命','开除','批准','拒绝','提出'];
+
+  for (var si = 0; si < sentences.length; si++) {
+    var s = sentences[si].trim();
+    if (s.length < 4) continue;
+
+    // Split into words — handle both English and Chinese
+    var words = s.split(/[\s,，、]+/);
+    if (words.length <= 2) {
+      // Chinese: try to split by punctuation first
+      var parts = s.split(/[，,、；;：:]/);
+      if (parts.length > 1) words = parts;
     }
-    
-    let vi=-1,vw=null;
-    for(let i=0;i<words.length;i++){
-      const w=words[i].toLowerCase().replace(/[^a-z\u4e00-\u9fff]/g,'');
-      if(verbs.includes(w)||cn.includes(w)){vi=i;vw=words[i];break;}
-    }
-    
-    if(vi>0&&vi<words.length-1&&vw){
-      const subj=words.slice(0,vi).join(' ').replace(/[^a-zA-Z\u4e00-\u9fff\s]/g,'').trim();
-      const obj=words.slice(vi+1).join(' ').replace(/[^a-zA-Z\u4e00-\u9fff\s]/g,'').trim();
-      if(subj&&obj&&subj.length>1&&obj.length>1){
-        let sn=data.children.find(c=>c.label.toLowerCase()===subj.toLowerCase());
-        if(!sn){nid++;sn={id:'n'+nid,label:subj,children:[],expanded:true};data.children.push(sn);}
-        nid++;sn.children.push({id:'n'+nid,label:obj,children:[],expanded:true,rel:vw});
+
+    var verbIdx = -1;
+    var verbWord = null;
+    for (var wi = 0; wi < words.length; wi++) {
+      var w = words[wi].toLowerCase().replace(/[^a-z\u4e00-\u9fff]/g, '');
+      if (verbs.indexOf(w) >= 0 || cnVerbs.indexOf(w) >= 0) {
+        verbIdx = wi;
+        verbWord = words[wi];
+        break;
       }
-    }else{
-      const ents=t.match(/\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)*/g)||[];
-      if(ents.length>0){
-        let mn=data.children.find(c=>c.label===ents[0]);
-        if(!mn){nid++;mn={id:'n'+nid,label:ents[0],children:[],expanded:true};data.children.push(mn);}
-        for(let j=1;j<ents.length;j++){
-          nid++;mn.children.push({id:'n'+nid,label:ents[j],children:[],expanded:true,rel:'related'});
+    }
+
+    if (verbIdx > 0 && verbIdx < words.length - 1 && verbWord) {
+      var subj = words.slice(0, verbIdx).join(' ').replace(/[^a-zA-Z\u4e00-\u9fff\s]/g, '').trim();
+      var obj = words.slice(verbIdx + 1).join(' ').replace(/[^a-zA-Z\u4e00-\u9fff\s]/g, '').trim();
+      if (subj && obj && subj.length > 1 && obj.length > 1) {
+        var sn = null;
+        for (var ri = 0; ri < root.children.length; ri++) {
+          if (root.children[ri].label.toLowerCase() === subj.toLowerCase()) {
+            sn = root.children[ri];
+            break;
+          }
+        }
+        if (!sn) {
+          nid++;
+          sn = {id:'n'+nid, label:subj, children:[], expanded:true};
+          root.children.push(sn);
+        }
+        nid++;
+        sn.children.push({id:'n'+nid, label:obj, children:[], expanded:true, rel:verbWord});
+      }
+    } else {
+      // No verb — extract capitalized entities
+      var ents = s.match(/\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)*/g);
+      if (ents && ents.length > 0) {
+        var mainEnt = ents[0];
+        var mn = null;
+        for (var ri2 = 0; ri2 < root.children.length; ri2++) {
+          if (root.children[ri2].label === mainEnt) { mn = root.children[ri2]; break; }
+        }
+        if (!mn) {
+          nid++;
+          mn = {id:'n'+nid, label:mainEnt, children:[], expanded:true};
+          root.children.push(mn);
+        }
+        for (var ej = 1; ej < ents.length; ej++) {
+          nid++;
+          mn.children.push({id:'n'+nid, label:ents[ej], children:[], expanded:true, rel:'related'});
         }
       }
     }
   }
-  render();
-  trackEvent('gen',{tool:'mg'});
-};
+
+  offX = -80;
+  drawTree();
+  trackEvent('gen', {tool:'mg'});
+}
+
+// ─── Examples ──────────────────────────────────────────
+function loadEx(idx) {
+  var examples = [
+    'Elon Musk founded Tesla and SpaceX. Tesla launched Model 3. SpaceX developed Starship. Google acquired DeepMind. Microsoft invested in OpenAI.',
+    '小明创建了科技公司。公司发布了新产品。团队开发了人工智能。公司收购了创业企业。'
+  ];
+  document.getElementById('txt').value = examples[idx];
+  genTree();
+}
+
+function clearAll() {
+  root = {id:'r', label:'Source', children:[], expanded:true};
+  nid = 0;
+  offX = 0;
+  offY = 0;
+  document.getElementById('txt').value = '';
+  drawTree();
+}
 
 // ─── Export ────────────────────────────────────────────
-let fmt='png';
-window.showExport=function(){document.getElementById('exportModal').classList.add('on');};
-window.hideExport=function(){document.getElementById('exportModal').classList.remove('on');};
-window.selFmt=function(f){fmt=f;document.querySelectorAll('.fb').forEach(b=>b.classList.toggle('on',b.dataset.f===f));};
-document.getElementById('exportModal').addEventListener('click',e=>{if(e.target.id==='exportModal')hideExport();});
+var exportFmt = 'png';
 
-window.doExport=function(){
-  hideExport();
-  if(fmt==='png'){const a=document.createElement('a');a.download='mind-galaxy.png';a.href=c.toDataURL('image/png');a.click();}
-  else if(fmt==='jpg'){const a=document.createElement('a');a.download='mind-galaxy.jpg';a.href=c.toDataURL('image/jpeg',0.95);a.click();}
-  else if(fmt==='pdf'){const d=c.toDataURL('image/png');const w=window.open('','_blank');w.document.write('<html><head><title>Mind-Galaxy</title><style>body{margin:0;display:flex;justify-content:center;align-items:center;height:100vh;}img{max-width:100%;max-height:100%;}</style></head><body><img src="'+d+'" onload="window.print()"></body></html>');w.document.close();}
-  else if(fmt==='docx'){const html=flatten(data,0);const h='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>Mind-Galaxy</title><style>body{font-family:Inter,sans-serif;padding:20px;}h1{color:#7c3aed;font-size:18px;}.l0{margin-left:0;font-weight:bold;font-size:16px;margin-top:16px;}.l1{margin-left:24px;font-size:14px;margin-top:8px;}.l2{margin-left:48px;font-size:13px;margin-top:4px;color:#555;}.l3{margin-left:72px;font-size:12px;margin-top:4px;color:#777;}.r{color:#7c3aed;font-size:11px;margin-left:24px;}</style></head><body><h1>Mind-Galaxy Mind Map</h1>'+html+'<p style="margin-top:40px;color:#999;font-size:10px;">Generated by Mind-Galaxy</p></body></html>';const b=new Blob([h],{type:'application/msword'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.download='mind-galaxy.doc';a.href=u;a.click();URL.revokeObjectURL(u);}
-  trackEvent('exp_'+fmt,{tool:'mg'});
-};
+function showExport() { document.getElementById('exportModal').classList.add('on'); }
+function hideExp() { document.getElementById('exportModal').classList.remove('on'); }
 
-function flatten(n,lv){
-  if(!n||n.id==='r'&&lv===0){let h='';if(n.children)n.children.forEach(c=>h+=flatten(c,lv+1));return h;}
-  let h='<div class="l'+Math.min(lv,3)+'">\u2022 '+n.label+'</div>';
-  if(n.rel)h+='<div class="r">\u21b3 '+n.rel+'</div>';
-  if(n.children&&n.expanded!==false)n.children.forEach(c=>h+=flatten(c,lv+1));
+function pickFmt(f) {
+  exportFmt = f;
+  var btns = document.querySelectorAll('.fb');
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].classList.toggle('on', btns[i].dataset.f === f);
+  }
+}
+
+document.getElementById('exportModal').addEventListener('click', function(e) {
+  if (e.target.id === 'exportModal') hideExp();
+});
+
+function doExp() {
+  hideExp();
+  var link = document.createElement('a');
+  if (exportFmt === 'png') {
+    link.download = 'galaxymind.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  } else if (exportFmt === 'jpg') {
+    link.download = 'galaxymind.jpg';
+    link.href = canvas.toDataURL('image/jpeg', 0.9);
+    link.click();
+  } else if (exportFmt === 'pdf') {
+    var imgData = canvas.toDataURL('image/png');
+    var w = window.open('', '_blank');
+    w.document.write('<html><head><title>GalaxyMind</title><style>body{margin:0;display:flex;justify-content:center;align-items:center;height:100vh;}img{max-width:100%;max-height:100%;}</style></head><body><img src="'+imgData+'" onload="window.print()"></body></html>');
+    w.document.close();
+  } else if (exportFmt === 'docx') {
+    var htmlText = flattenTree(root, 0);
+    var fullHtml = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>GalaxyMind</title><style>body{font-family:Inter,sans-serif;padding:20px;}h1{color:#7c3aed;font-size:18px;}.l0{margin-left:0;font-weight:bold;font-size:16px;margin-top:16px;}.l1{margin-left:24px;font-size:14px;margin-top:8px;}.l2{margin-left:48px;font-size:13px;margin-top:4px;color:#555;}.l3{margin-left:72px;font-size:12px;margin-top:4px;color:#777;}.r{color:#7c3aed;font-size:11px;margin-left:24px;}</style></head><body><h1>GalaxyMind Mind Map</h1>'+htmlText+'<p style="margin-top:40px;color:#999;font-size:10px;">Generated by GalaxyMind</p></body></html>';
+    var blob = new Blob([fullHtml], {type:'application/msword'});
+    link.download = 'galaxymind.doc';
+    link.href = URL.createObjectURL(blob);
+    link.click();
+  }
+  trackEvent('exp_'+exportFmt, {tool:'mg'});
+}
+
+function flattenTree(node, level) {
+  if (!node || (node.id === 'r' && level === 0)) {
+    var h = '';
+    if (node.children) for (var i = 0; i < node.children.length; i++) h += flattenTree(node.children[i], level + 1);
+    return h;
+  }
+  var h = '<div class="l'+Math.min(level,3)+'">- '+node.label+'</div>';
+  if (node.rel) h += '<div class="r">-> '+node.rel+'</div>';
+  if (node.children && node.expanded !== false) for (var i = 0; i < node.children.length; i++) h += flattenTree(node.children[i], level + 1);
   return h;
 }
 
-// ─── 3D View ────────────────────────────────────────────
-window.toggleView=function(){
-  if(mode==='2d'){
-    mode='3d';c.style.display='none';
-    document.getElementById('vbtn').textContent='🌲 2D';
+// ─── 3D View ───────────────────────────────────────────
+var viewMode = '2d';
+
+function toggleView() {
+  if (viewMode === '2d') {
+    viewMode = '3d';
+    canvas.style.display = 'none';
+    document.getElementById('vbtn').textContent = '2D';
     document.getElementById('vbtn').classList.add('on');
-    // Embed 3D version in an iframe
-    const container = document.createElement('div');
-    container.id = 'threeFrame';
-    container.style.cssText = 'position:fixed;top:50px;left:0;right:0;bottom:0;z-index:20;';
-    container.innerHTML = '<iframe src="/index-3d-backup.html" style="width:100%;height:100%;border:none;"></iframe>';
-    document.body.appendChild(container);
+    var frame = document.createElement('div');
+    frame.id = 'threeFrame';
+    frame.style.cssText = 'position:fixed;top:50px;left:0;right:0;bottom:0;z-index:20;background:#0a0a1a;';
+    frame.innerHTML = '<iframe src="/index-3d-backup.html" style="width:100%;height:100%;border:none;"></iframe>';
+    document.body.appendChild(frame);
   } else {
-    mode='2d';c.style.display='block';
-    document.getElementById('vbtn').textContent='🌐 3D';
+    viewMode = '2d';
+    canvas.style.display = 'block';
+    document.getElementById('vbtn').textContent = '3D';
     document.getElementById('vbtn').classList.remove('on');
-    const f = document.getElementById('threeFrame');
-    if (f) f.remove();
+    var f = document.getElementById('threeFrame');
+    if (f) f.parentNode.removeChild(f);
   }
-};
+}
 
 // ─── Keyboard ──────────────────────────────────────────
-document.addEventListener('keydown',e=>{
-  if(e.key==='Escape')hideEditor();
-  if(e.key==='Enter'&&document.getElementById('editor').style.display==='block')saveEdit();
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') hideEditor();
+  if (e.key === 'Enter' && document.getElementById('editor').style.display === 'block') saveEd();
 });
 
-// ─── Examples ──────────────────────────────────────────
-window.loadExample=function(n){
-  const ex=[
-    '',
-    'Elon Musk founded Tesla and SpaceX. Tesla launched Model 3. SpaceX developed Starship. Google acquired DeepMind. Microsoft invested in OpenAI.',
-    '小明创建了科技公司。公司发布了新产品。团队开发了人工智能。公司收购了创业企业。',
-    ''
-  ];
-  document.getElementById('txt').value=ex[n];
-  if(ex[n])generate();
-  else{data={id:'r',label:'📄 Source',children:[],expanded:true};nid=0;off={x:0,y:0};render();}
-};
-
 // ─── Init ──────────────────────────────────────────────
-// Auto-generate demo tree on load
-function initDemo() {
-  const demoText = 'Elon Musk founded Tesla and SpaceX. Tesla launched Model 3. SpaceX developed Starship.';
-  document.getElementById('txt').value = demoText + '\n\n小明创建了公司。公司发布了新产品。';
-  generate();
-  // Add some Chinese demo data
-  setTimeout(() => {
-    // Offset canvas to show the tree nicely
-    off.x = -100;
-    render();
-  }, 100);
-}
-initDemo();
+document.getElementById('txt').value = 'Elon Musk founded Tesla and SpaceX. Tesla launched Model 3.';
+genTree();
 </script>
+
 </body>
 </html>
