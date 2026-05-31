@@ -75,10 +75,15 @@
 
 <canvas id="canvas"></canvas>
 
-<div id="inp">
-  <textarea id="txt" placeholder="Paste text to auto-generate a mind map...">Elon Musk founded Tesla and SpaceX. Tesla launched Model 3. SpaceX developed Starship.</textarea>
-  <button onclick="generate()">🚀 Gen</button>
-</div>
+  <div id="inp">
+    <textarea id="txt" placeholder="Paste text to auto-generate a mind map..."></textarea>
+    <button onclick="generate()">🚀 Gen</button>
+    <div style="position:absolute;right:80px;bottom:-22px;display:flex;gap:4px;">
+      <span style="font-size:10px;color:#475569;cursor:pointer;" onclick="loadExample(1)">EN</span>
+      <span style="font-size:10px;color:#475569;cursor:pointer;" onclick="loadExample(2)">中文</span>
+      <span style="font-size:10px;color:#475569;cursor:pointer;" onclick="loadExample(3)">Clear</span>
+    </div>
+  </div>
 
 <div id="editor">
   <input id="edInput" placeholder="Node label..." maxlength="30">
@@ -269,7 +274,10 @@ window.generate=function(){
     // Try to segment Chinese by known entities
     let words=t.split(/[\s,，、]+/).filter(w=>w.length>0);
     if(words.length<=2&&/[\u4e00-\u9fff]/.test(t)){
-      words=t.match(/[\u4e00-\u9fff]{2,4}/g)||[];
+      // For Chinese text, split by known delimiters
+      const parts = t.split(/[，。、；：\s]+/).filter(w=>w.length>0);
+      if(parts.length>1) words=parts;
+      else words=t.match(/[\u4e00-\u9fff]{2,4}/g)||[];
     }
     
     let vi=-1,vw=null;
@@ -331,11 +339,18 @@ window.toggleView=function(){
     mode='3d';c.style.display='none';
     document.getElementById('vbtn').textContent='🌲 2D';
     document.getElementById('vbtn').classList.add('on');
-    // Load 3D version in new tab for now
-    window.open('/index-3d-backup.html','_blank');
+    // Embed 3D version in an iframe
+    const container = document.createElement('div');
+    container.id = 'threeFrame';
+    container.style.cssText = 'position:fixed;top:50px;left:0;right:0;bottom:0;z-index:20;';
+    container.innerHTML = '<iframe src="/index-3d-backup.html" style="width:100%;height:100%;border:none;"></iframe>';
+    document.body.appendChild(container);
+  } else {
     mode='2d';c.style.display='block';
     document.getElementById('vbtn').textContent='🌐 3D';
     document.getElementById('vbtn').classList.remove('on');
+    const f = document.getElementById('threeFrame');
+    if (f) f.remove();
   }
 };
 
@@ -345,8 +360,33 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&document.getElementById('editor').style.display==='block')saveEdit();
 });
 
+// ─── Examples ──────────────────────────────────────────
+window.loadExample=function(n){
+  const ex=[
+    '',
+    'Elon Musk founded Tesla and SpaceX. Tesla launched Model 3. SpaceX developed Starship. Google acquired DeepMind. Microsoft invested in OpenAI.',
+    '小明创建了科技公司。公司发布了新产品。团队开发了人工智能。公司收购了创业企业。',
+    ''
+  ];
+  document.getElementById('txt').value=ex[n];
+  if(ex[n])generate();
+  else{data={id:'r',label:'📄 Source',children:[],expanded:true};nid=0;off={x:0,y:0};render();}
+};
+
 // ─── Init ──────────────────────────────────────────────
-render();
+// Auto-generate demo tree on load
+function initDemo() {
+  const demoText = 'Elon Musk founded Tesla and SpaceX. Tesla launched Model 3. SpaceX developed Starship.';
+  document.getElementById('txt').value = demoText + '\n\n小明创建了公司。公司发布了新产品。';
+  generate();
+  // Add some Chinese demo data
+  setTimeout(() => {
+    // Offset canvas to show the tree nicely
+    off.x = -100;
+    render();
+  }, 100);
+}
+initDemo();
 </script>
 </body>
 </html>
