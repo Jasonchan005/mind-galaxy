@@ -133,19 +133,22 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-// ─── Draw Tree ──────────────────────────────────────────
+// ─── Draw Tree (XMind-style radial layout) ────────────
 function drawTree() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawNode(root, canvas.width/2 + offX, 70 + offY, 0);
+  var cx = canvas.width / 2 + offX;
+  var cy = canvas.height / 2 + offY + 25;
+  drawNodeRadial(root, cx, cy, 0, 0, Math.PI * 2);
 }
 
-function drawNode(node, x, y, level) {
+function drawNodeRadial(node, x, y, level, startAngle, arcSpan) {
   if (!node) return;
   var w = Math.max(70, node.label.length * 8 + 24);
   var h = 30;
   var isSel = node.id === selected;
   var hasKids = node.children && node.children.length > 0;
 
+  // Draw node
   ctx.shadowColor = isSel ? 'rgba(124,58,237,0.4)' : 'rgba(0,0,0,0.3)';
   ctx.shadowBlur = isSel ? 12 : 4;
 
@@ -161,61 +164,86 @@ function drawNode(node, x, y, level) {
   ctx.stroke();
   ctx.shadowBlur = 0;
 
+  // Label
   ctx.fillStyle = '#e2e8f0';
   ctx.font = '13px Inter, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(node.label, x, y);
 
+  // +/- indicator
   if (hasKids) {
     ctx.fillStyle = '#64748b';
     ctx.font = '11px sans-serif';
     ctx.fillText(node.expanded === false ? '+' : '-', x + w/2 - 4, y);
   }
 
+  // Draw children in radial layout
   if (hasKids && node.expanded !== false) {
-    var spacing = Math.min(110, 360 / (node.children.length + 1));
-    var totalH = (node.children.length - 1) * spacing;
-    var firstY = y + 55 - totalH / 2;
-
-    for (var i = 0; i < node.children.length; i++) {
+    var n = node.children.length;
+    var radius = Math.max(130, level * 30 + 100);
+    
+    // For root, spread children evenly around full circle
+    // For children, spread in their arc section
+    var totalArc = level === 0 ? Math.PI * 2 : arcSpan * 0.7;
+    var startA = level === 0 ? -Math.PI / 2 : startAngle + arcSpan * 0.15;
+    
+    for (var i = 0; i < n; i++) {
       var child = node.children[i];
-      var cy = firstY + i * spacing;
-      var cx = x + 170;
-
+      var angle = startA + (i / n) * totalArc;
+      var childX = x + radius * Math.cos(angle);
+      var childY = y + radius * Math.sin(angle);
+      
+      // Draw line
       ctx.beginPath();
-      ctx.moveTo(x + w/2, y);
-      ctx.lineTo(cx - 35, y);
-      ctx.lineTo(cx - 35, cy);
-      ctx.lineTo(cx - w/2, cy);
+      ctx.moveTo(x + (w/2) * Math.cos(angle), y + (h/2) * Math.sin(angle));
+      
+      // Curve to child
+      var cpX = (x + childX) / 2;
+      var cpY = (y + childY) / 2;
+      ctx.quadraticCurveTo(cpX, cpY, childX, childY);
       ctx.strokeStyle = 'rgba(124,58,237,0.25)';
       ctx.lineWidth = 1.5;
       ctx.stroke();
 
+      // Relation label at midpoint
       if (child.rel) {
         ctx.fillStyle = '#a78bfa';
         ctx.font = '9px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(child.rel, x + w/2 + 80, (y + cy) / 2 - 4);
+        var mx = (x + childX) / 2 + 10;
+        var my = (y + childY) / 2 - 8;
+        ctx.fillText(child.rel, mx, my);
       }
 
-      drawNode(child, cx, cy, level + 1);
+      // Recurse — each child gets its own arc section
+      var childArc = totalArc / n;
+      var childStart = startA + (i / n) * totalArc;
+      drawNodeRadial(child, childX, childY, level + 1, childStart, childArc);
     }
   }
 }
 
-// ─── Hit Test ───────────────────────────────────────────
-function hitTest(node, mx, my, x, y) {
+// ─── Hit Test (radial) ─────────────────────────────────
+function hitTestRadial(node, mx, my, x, y, level, startAngle, arcSpan) {
   if (!node) return null;
   var w = Math.max(70, node.label.length * 8 + 24);
   var h = 30;
   if (mx >= x - w/2 && mx <= x + w/2 && my >= y - h/2 && my <= y + h/2) return node;
+  
   if (node.children && node.expanded !== false) {
-    var spacing = Math.min(110, 360 / (node.children.length + 1));
-    var totalH = (node.children.length - 1) * spacing;
-    var firstY = y + 55 - totalH / 2;
-    for (var i = 0; i < node.children.length; i++) {
-      var result = hitTest(node.children[i], mx, my, x + 170, firstY + i * spacing);
+    var n = node.children.length;
+    var radius = Math.max(130, level * 30 + 100);
+    var totalArc = level === 0 ? Math.PI * 2 : arcSpan * 0.7;
+    var startA = level === 0 ? -Math.PI / 2 : startAngle + arcSpan * 0.15;
+    
+    for (var i = 0; i < n; i++) {
+      var angle = startA + (i / n) * totalArc;
+      var childX = x + radius * Math.cos(angle);
+      var childY = y + radius * Math.sin(angle);
+      var childArc = totalArc / n;
+      var childStart = startA + (i / n) * totalArc;
+      var result = hitTestRadial(node.children[i], mx, my, childX, childY, level + 1, childStart, childArc);
       if (result) return result;
     }
   }
@@ -227,7 +255,7 @@ canvas.addEventListener('mousedown', function(e) {
   var rect = canvas.getBoundingClientRect();
   var mx = e.clientX - rect.left;
   var my = e.clientY - rect.top;
-  var hit = hitTest(root, mx, my, canvas.width/2 + offX, 70 + offY);
+  var hit = hitTestRadial(root, mx, my, canvas.width/2 + offX, canvas.height/2 + offY + 25, 0, 0, Math.PI * 2);
   if (hit) {
     selected = hit.id;
     drawTree();
@@ -259,7 +287,7 @@ canvas.addEventListener('dblclick', function(e) {
   var rect = canvas.getBoundingClientRect();
   var mx = e.clientX - rect.left;
   var my = e.clientY - rect.top;
-  var hit = hitTest(root, mx, my, canvas.width/2 + offX, 70 + offY);
+  var hit = hitTestRadial(root, mx, my, canvas.width/2 + offX, canvas.height/2 + offY + 25, 0, 0, Math.PI * 2);
   if (hit && hit.children && hit.children.length > 0) {
     hit.expanded = hit.expanded === false ? true : false;
     drawTree();
