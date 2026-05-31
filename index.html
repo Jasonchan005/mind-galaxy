@@ -350,10 +350,33 @@ function genTree() {
 
     // Split into words — handle both English and Chinese
     var words = s.split(/[\s,，、]+/);
-    if (words.length <= 2) {
-      // Chinese: try to split by punctuation first
+    if (words.length <= 2 && /[\u4e00-\u9fff]/.test(s)) {
+      // Chinese text: split by common verbs and punctuation
       var parts = s.split(/[，,、；;：:]/);
-      if (parts.length > 1) words = parts;
+      if (parts.length > 1) {
+        words = parts;
+      } else {
+        // Split by known verbs
+        var splitWords = [];
+        var remaining = s;
+        var foundVerb = false;
+        for (var vi = 0; vi < cnVerbs.length; vi++) {
+          var vIdx = remaining.indexOf(cnVerbs[vi]);
+          if (vIdx > 0) {
+            splitWords.push(remaining.substring(0, vIdx));
+            splitWords.push(cnVerbs[vi]);
+            remaining = remaining.substring(vIdx + cnVerbs[vi].length);
+            foundVerb = true;
+            break;
+          }
+        }
+        if (foundVerb && remaining.length > 0) {
+          // Get object after verb
+          var objMatch = remaining.match(/^了?([\u4e00-\u9fff]+)/);
+          if (objMatch) splitWords.push(objMatch[1]);
+          words = splitWords;
+        }
+      }
     }
 
     var verbIdx = -1;
