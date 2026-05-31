@@ -28,10 +28,10 @@
     body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f0f23;color:#e2e8f0;overflow:hidden;height:100vh;}
     #header{position:fixed;top:0;left:0;right:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:10px 20px;background:rgba(15,15,35,0.92);border-bottom:1px solid rgba(51,65,85,0.3);}
     #header h1{font-size:18px;font-weight:800;background:linear-gradient(135deg,#a78bfa,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
-    .hdr-btns{display:flex;gap:8px;}
+    .hdr-btns{display:flex;gap:6px;}
     .hdr-btns button{padding:6px 14px;border:1px solid #334155;border-radius:6px;background:rgba(30,41,59,0.8);color:#94a3b8;font-size:12px;cursor:pointer;font-weight:500;}
     .hdr-btns button:hover{border-color:#7c3aed;color:#a78bfa;}
-    .hdr-btns button.on{background:#7c3aed;color:#fff;border-color:#7c3aed;}
+    .hdr-btns button.active{background:#7c3aed;color:#fff;border-color:#7c3aed;}
     #canvas{position:fixed;top:50px;left:0;right:0;bottom:0;cursor:grab;}
     #canvas:active{cursor:grabbing;}
     #inp{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:30;width:90%;max-width:560px;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}
@@ -70,8 +70,9 @@
 <div id="header">
   <h1>GalaxyMind</h1>
   <div class="hdr-btns">
-    <button onclick="toggleView()" id="vbtn">3D</button>
-    <button onclick="showExport()">Export</button>
+    <button onclick="switchView('2d')" id="v2d" class="active">🌲 Tree</button>
+    <button onclick="switchView('3d')" id="v3d">🌐 3D</button>
+    <button onclick="showExport()">📥 Export</button>
   </div>
 </div>
 
@@ -488,27 +489,31 @@ function flattenTree(node, level) {
   return h;
 }
 
-// ─── 3D View ───────────────────────────────────────────
+// ─── View Switch ───────────────────────────────────────
 var viewMode = '2d';
 
-function toggleView() {
-  if (viewMode === '2d') {
-    viewMode = '3d';
+function switchView(mode) {
+  if (mode === viewMode) return;
+  viewMode = mode;
+  
+  document.getElementById('v2d').className = mode === '2d' ? 'active' : '';
+  document.getElementById('v3d').className = mode === '3d' ? 'active' : '';
+  
+  if (mode === '3d') {
     canvas.style.display = 'none';
-    document.getElementById('vbtn').textContent = '2D';
-    document.getElementById('vbtn').classList.add('on');
-    var frame = document.createElement('div');
-    frame.id = 'threeFrame';
-    frame.style.cssText = 'position:fixed;top:50px;left:0;right:0;bottom:0;z-index:20;background:#0a0a1a;';
-    frame.innerHTML = '<iframe src="/index-3d-backup.html" style="width:100%;height:100%;border:none;"></iframe>';
-    document.body.appendChild(frame);
+    var frame = document.getElementById('threeFrame');
+    if (!frame) {
+      frame = document.createElement('div');
+      frame.id = 'threeFrame';
+      frame.style.cssText = 'position:fixed;top:50px;left:0;right:0;bottom:0;z-index:20;background:#0a0a1a;';
+      frame.innerHTML = '<iframe src="/index-3d-backup.html" style="width:100%;height:100%;border:none;"></iframe>';
+      document.body.appendChild(frame);
+    }
+    frame.style.display = 'block';
   } else {
-    viewMode = '2d';
     canvas.style.display = 'block';
-    document.getElementById('vbtn').textContent = '3D';
-    document.getElementById('vbtn').classList.remove('on');
     var f = document.getElementById('threeFrame');
-    if (f) f.parentNode.removeChild(f);
+    if (f) f.style.display = 'none';
   }
 }
 
