@@ -138,7 +138,29 @@ function drawTree() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   var cx = canvas.width / 2 + offX;
   var cy = canvas.height / 2 + offY + 25;
-  drawNodeRadial(root, cx, cy, 0, 0, Math.PI * 2);
+  
+  // Skip root node — draw children directly as top-level nodes
+  if (root.children && root.expanded !== false) {
+    var n = root.children.length;
+    for (var i = 0; i < n; i++) {
+      var angle = -Math.PI / 2 + (i / n) * Math.PI * 2;
+      var radius = 100;
+      var childX = cx + radius * Math.cos(angle);
+      var childY = cy + radius * Math.sin(angle);
+      
+      // Draw line from center
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.quadraticCurveTo((cx+childX)/2, (cy+childY)/2, childX, childY);
+      ctx.strokeStyle = 'rgba(124,58,237,0.2)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      
+      var childArc = Math.PI * 2 / n;
+      var childStart = -Math.PI / 2 + (i / n) * Math.PI * 2;
+      drawNodeRadial(root.children[i], childX, childY, 1, childStart, childArc);
+    }
+  }
 }
 
 function drawNodeRadial(node, x, y, level, startAngle, arcSpan) {
@@ -255,7 +277,22 @@ canvas.addEventListener('mousedown', function(e) {
   var rect = canvas.getBoundingClientRect();
   var mx = e.clientX - rect.left;
   var my = e.clientY - rect.top;
-  var hit = hitTestRadial(root, mx, my, canvas.width/2 + offX, canvas.height/2 + offY + 25, 0, 0, Math.PI * 2);
+  var cx = canvas.width/2 + offX;
+  var cy = canvas.height/2 + offY + 25;
+  
+  // Check top-level children directly
+  var hit = null;
+  if (root.children) {
+    for (var i = 0; i < root.children.length; i++) {
+      var angle = -Math.PI/2 + (i/root.children.length)*Math.PI*2;
+      var childX = cx + 100*Math.cos(angle);
+      var childY = cy + 100*Math.sin(angle);
+      var childArc = Math.PI*2/root.children.length;
+      var childStart = -Math.PI/2 + (i/root.children.length)*Math.PI*2;
+      hit = hitTestRadial(root.children[i], mx, my, childX, childY, 1, childStart, childArc);
+      if (hit) break;
+    }
+  }
   if (hit) {
     selected = hit.id;
     drawTree();
@@ -287,7 +324,21 @@ canvas.addEventListener('dblclick', function(e) {
   var rect = canvas.getBoundingClientRect();
   var mx = e.clientX - rect.left;
   var my = e.clientY - rect.top;
-  var hit = hitTestRadial(root, mx, my, canvas.width/2 + offX, canvas.height/2 + offY + 25, 0, 0, Math.PI * 2);
+  var cx = canvas.width/2 + offX;
+  var cy = canvas.height/2 + offY + 25;
+  
+  var hit = null;
+  if (root.children) {
+    for (var i = 0; i < root.children.length; i++) {
+      var angle = -Math.PI/2 + (i/root.children.length)*Math.PI*2;
+      var childX = cx + 100*Math.cos(angle);
+      var childY = cy + 100*Math.sin(angle);
+      var childArc = Math.PI*2/root.children.length;
+      var childStart = -Math.PI/2 + (i/root.children.length)*Math.PI*2;
+      hit = hitTestRadial(root.children[i], mx, my, childX, childY, 1, childStart, childArc);
+      if (hit) break;
+    }
+  }
   if (hit && hit.children && hit.children.length > 0) {
     hit.expanded = hit.expanded === false ? true : false;
     drawTree();
