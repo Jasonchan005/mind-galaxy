@@ -7,665 +7,346 @@
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
     gtag('config', 'G-503ZSLGF0W');
-    function trackEvent(action, params) {
-      if (typeof gtag === 'function') gtag('event', action, params || {});
-    }
+    function trackEvent(a,p){if(typeof gtag==='function')gtag('event',a,p||{});}
   </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mind-Galaxy – AI Mind Map & Knowledge Graph</title>
   <meta name="description" content="Create beautiful mind maps from text. Tree view or 3D sphere. Free online mind map maker.">
-  <meta name="keywords" content="mind map, AI mind map, knowledge graph, mind mapping tool, 3D mind map">
   <meta property="og:title" content="Mind-Galaxy – AI Mind Map & Knowledge Graph">
   <meta property="og:description" content="Create beautiful mind maps from text. Free, no sign-up.">
   <meta property="og:url" content="https://mind-galaxy-three.vercel.app/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Mind-Galaxy">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Mind-Galaxy – AI Mind Map & Knowledge Graph">
-  <meta name="twitter:description" content="Create beautiful mind maps from text. Free, no sign-up.">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="canonical" href="https://mind-galaxy-three.vercel.app/">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f23; color: #e2e8f0; overflow: hidden; height: 100vh; }
-    
-    /* ─── Header ──────────────────────────────────────────── */
-    #header { position: fixed; top: 0; left: 0; right: 0; z-index: 50; display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; background: rgba(15,15,35,0.9); border-bottom: 1px solid rgba(51,65,85,0.3); backdrop-filter: blur(10px); }
-    #header h1 { font-size: 18px; font-weight: 800; background: linear-gradient(135deg, #a78bfa, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    .header-actions { display: flex; gap: 8px; align-items: center; }
-    .header-actions button { padding: 6px 14px; border: 1px solid #334155; border-radius: 6px; background: rgba(30,41,59,0.8); color: #94a3b8; font-size: 12px; cursor: pointer; font-weight: 500; }
-    .header-actions button:hover { border-color: #7c3aed; color: #a78bfa; }
-    .header-actions button.active { background: #7c3aed; color: white; border-color: #7c3aed; }
-    
-    /* ─── Toolbar ──────────────────────────────────────────── */
-    #toolbar { position: fixed; left: 20px; top: 50%; transform: translateY(-50%); z-index: 40; display: flex; flex-direction: column; gap: 6px; }
-    #toolbar button { width: 36px; height: 36px; border: 1px solid #334155; border-radius: 8px; background: rgba(15,23,42,0.9); color: #94a3b8; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-    #toolbar button:hover { border-color: #7c3aed; color: #a78bfa; }
-    
-    /* ─── Canvas ──────────────────────────────────────────── */
-    #mapCanvas { position: fixed; top: 50px; left: 0; right: 0; bottom: 0; cursor: grab; }
-    #mapCanvas:active { cursor: grabbing; }
-    #threeContainer { position: fixed; top: 50px; left: 0; right: 0; bottom: 0; display: none; }
-    
-    /* ─── Input Panel ─────────────────────────────────────── */
-    #inputPanel { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 30; width: 90%; max-width: 600px; display: flex; gap: 6px; }
-    #inputPanel textarea { flex: 1; padding: 10px 14px; border: 1px solid #334155; border-radius: 10px; background: rgba(15,23,42,0.95); color: #e2e8f0; font-size: 13px; resize: none; min-height: 42px; max-height: 80px; outline: none; font-family: inherit; }
-    #inputPanel textarea:focus { border-color: #7c3aed; }
-    #inputPanel button { padding: 10px 20px; background: #7c3aed; border: none; border-radius: 10px; color: white; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
-    #inputPanel button:hover { background: #6d28d9; }
-    
-    /* ─── Node Editor ─────────────────────────────────────── */
-    #nodeEditor { position: fixed; display: none; z-index: 60; background: rgba(15,23,42,0.98); border: 1px solid #334155; border-radius: 12px; padding: 16px; min-width: 220px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
-    #nodeEditor input { width: 100%; padding: 8px 10px; border: 1px solid #334155; border-radius: 6px; background: rgba(0,0,0,0.3); color: #e2e8f0; font-size: 13px; outline: none; margin-bottom: 8px; }
-    #nodeEditor input:focus { border-color: #7c3aed; }
-    #nodeEditor .actions { display: flex; gap: 6px; }
-    #nodeEditor .actions button { flex: 1; padding: 6px; border-radius: 6px; border: none; font-size: 12px; cursor: pointer; font-weight: 500; }
-    #nodeEditor .actions .save { background: #7c3aed; color: white; }
-    #nodeEditor .actions .save:hover { background: #6d28d9; }
-    #nodeEditor .actions .delete { background: rgba(239,68,68,0.2); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
-    #nodeEditor .actions .delete:hover { background: rgba(239,68,68,0.3); }
-    #nodeEditor .actions .add-child { background: rgba(34,197,94,0.2); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); }
-    #nodeEditor .actions .add-child:hover { background: rgba(34,197,94,0.3); }
-    
-    /* ─── Export Modal ────────────────────────────────────── */
-    #exportModal { position: fixed; display: none; z-index: 70; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center; }
-    #exportModal.show { display: flex; }
-    #exportModal .modal { background: rgba(15,23,42,0.98); border: 1px solid #334155; border-radius: 16px; padding: 24px; min-width: 300px; max-width: 400px; }
-    #exportModal h3 { font-size: 16px; margin-bottom: 16px; color: #e2e8f0; }
-    #exportModal .formats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
-    #exportModal .format-btn { padding: 14px; border: 1px solid #334155; border-radius: 10px; background: rgba(30,41,59,0.5); color: #94a3b8; font-size: 13px; cursor: pointer; text-align: center; font-weight: 500; }
-    #exportModal .format-btn:hover { border-color: #7c3aed; color: #a78bfa; }
-    #exportModal .format-btn.active { border-color: #7c3aed; background: rgba(124,58,237,0.15); color: #a78bfa; }
-    #exportModal .export-actions { display: flex; gap: 8px; }
-    #exportModal .export-actions button { flex: 1; padding: 10px; border-radius: 8px; border: none; font-size: 13px; cursor: pointer; font-weight: 600; }
-    #exportModal .export-actions .do-export { background: #7c3aed; color: white; }
-    #exportModal .export-actions .do-export:hover { background: #6d28d9; }
-    #exportModal .export-actions .cancel { background: #1e293b; border: 1px solid #334155; color: #94a3b8; }
-    #exportModal .export-actions .cancel:hover { border-color: #64748b; }
-    
-    .tagline { position: fixed; bottom: 4px; right: 12px; font-size: 10px; color: #334155; z-index: 15; }
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f0f23;color:#e2e8f0;overflow:hidden;height:100vh;}
+    #header{position:fixed;top:0;left:0;right:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:10px 20px;background:rgba(15,15,35,0.92);border-bottom:1px solid rgba(51,65,85,0.3);backdrop-filter:blur(10px);}
+    #header h1{font-size:18px;font-weight:800;background:linear-gradient(135deg,#a78bfa,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+    .hdr-btns{display:flex;gap:8px;}
+    .hdr-btns button{padding:6px 14px;border:1px solid #334155;border-radius:6px;background:rgba(30,41,59,0.8);color:#94a3b8;font-size:12px;cursor:pointer;font-weight:500;}
+    .hdr-btns button:hover{border-color:#7c3aed;color:#a78bfa;}
+    .hdr-btns button.on{background:#7c3aed;color:#fff;border-color:#7c3aed;}
+    #canvas{position:fixed;top:50px;left:0;right:0;bottom:0;cursor:grab;}
+    #canvas:active{cursor:grabbing;}
+    #inp{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:30;width:90%;max-width:560px;display:flex;gap:6px;}
+    #inp textarea{flex:1;padding:10px 14px;border:1px solid #334155;border-radius:10px;background:rgba(15,23,42,0.95);color:#e2e8f0;font-size:13px;resize:none;min-height:42px;max-height:80px;outline:none;font-family:inherit;}
+    #inp textarea:focus{border-color:#7c3aed;}
+    #inp button{padding:10px 20px;background:#7c3aed;border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;}
+    #inp button:hover{background:#6d28d9;}
+    #editor{position:fixed;display:none;z-index:60;background:rgba(15,23,42,0.98);border:1px solid #334155;border-radius:12px;padding:16px;min-width:220px;box-shadow:0 20px 60px rgba(0,0,0,0.5);}
+    #editor input{width:100%;padding:8px 10px;border:1px solid #334155;border-radius:6px;background:rgba(0,0,0,0.3);color:#e2e8f0;font-size:13px;outline:none;margin-bottom:8px;}
+    #editor input:focus{border-color:#7c3aed;}
+    #editor .ea{display:flex;gap:6px;}
+    #editor .ea button{flex:1;padding:6px;border-radius:6px;border:none;font-size:12px;cursor:pointer;font-weight:500;}
+    #editor .ea .sv{background:#7c3aed;color:#fff;}
+    #editor .ea .sv:hover{background:#6d28d9;}
+    #editor .ea .del{background:rgba(239,68,68,0.2);color:#ef4444;border:1px solid rgba(239,68,68,0.3);}
+    #editor .ea .del:hover{background:rgba(239,68,68,0.3);}
+    #editor .ea .add{background:rgba(34,197,94,0.2);color:#22c55e;border:1px solid rgba(34,197,94,0.3);}
+    #editor .ea .add:hover{background:rgba(34,197,94,0.3);}
+    #exportModal{position:fixed;display:none;z-index:70;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center;}
+    #exportModal.on{display:flex;}
+    #exportModal .md{background:rgba(15,23,42,0.98);border:1px solid #334155;border-radius:16px;padding:24px;min-width:300px;max-width:400px;}
+    #exportModal h3{font-size:16px;margin-bottom:16px;color:#e2e8f0;}
+    #exportModal .fm{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
+    #exportModal .fb{padding:14px;border:1px solid #334155;border-radius:10px;background:rgba(30,41,59,0.5);color:#94a3b8;font-size:13px;cursor:pointer;text-align:center;font-weight:500;}
+    #exportModal .fb:hover{border-color:#7c3aed;color:#a78bfa;}
+    #exportModal .fb.on{border-color:#7c3aed;background:rgba(124,58,237,0.15);color:#a78bfa;}
+    #exportModal .ea2{display:flex;gap:8px;}
+    #exportModal .ea2 button{flex:1;padding:10px;border-radius:8px;border:none;font-size:13px;cursor:pointer;font-weight:600;}
+    #exportModal .ea2 .go{background:#7c3aed;color:#fff;}
+    #exportModal .ea2 .go:hover{background:#6d28d9;}
+    #exportModal .ea2 .no{background:#1e293b;border:1px solid #334155;color:#94a3b8;}
+    #exportModal .ea2 .no:hover{border-color:#64748b;}
+    .tag{position:fixed;bottom:4px;right:12px;font-size:10px;color:#334155;z-index:15;}
   </style>
 </head>
 <body>
-  <!-- Header -->
-  <div id="header">
-    <h1>🌌 Mind-Galaxy</h1>
-    <div class="header-actions">
-      <button onclick="toggleView()" id="viewToggle">🌐 3D View</button>
-      <button onclick="showExportModal()">📥 Export</button>
+<div id="header">
+  <h1>🌌 Mind-Galaxy</h1>
+  <div class="hdr-btns">
+    <button onclick="toggleView()" id="vbtn">🌐 3D</button>
+    <button onclick="showExport()">📥 Export</button>
+  </div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<div id="inp">
+  <textarea id="txt" placeholder="Paste text to auto-generate a mind map...">Elon Musk founded Tesla and SpaceX. Tesla launched Model 3. SpaceX developed Starship.</textarea>
+  <button onclick="generate()">🚀 Gen</button>
+</div>
+
+<div id="editor">
+  <input id="edInput" placeholder="Node label..." maxlength="30">
+  <div class="ea">
+    <button class="sv" onclick="saveEdit()">Save</button>
+    <button class="add" onclick="addChild()">+Child</button>
+    <button class="del" onclick="delEdit()">Del</button>
+  </div>
+</div>
+
+<div id="exportModal">
+  <div class="md">
+    <h3>📥 Export</h3>
+    <div class="fm" id="efm">
+      <div class="fb on" data-f="png" onclick="selFmt('png')">🖼️ PNG</div>
+      <div class="fb" data-f="jpg" onclick="selFmt('jpg')">🖼️ JPG</div>
+      <div class="fb" data-f="pdf" onclick="selFmt('pdf')">📄 PDF</div>
+      <div class="fb" data-f="docx" onclick="selFmt('docx')">📝 Word</div>
+    </div>
+    <div class="ea2">
+      <button class="go" onclick="doExport()">Download</button>
+      <button class="no" onclick="hideExport()">Cancel</button>
     </div>
   </div>
+</div>
 
-  <!-- Toolbar -->
-  <div id="toolbar">
-    <button onclick="addRootChild()" title="Add Node">➕</button>
-    <button onclick="deleteSelected()" title="Delete">🗑️</button>
-    <button onclick="collapseAll()" title="Collapse All">📂</button>
-    <button onclick="expandAll()" title="Expand All">📖</button>
-  </div>
+<div class="tag">Mind-Galaxy by JCS Labs</div>
 
-  <!-- 2D Canvas -->
-  <canvas id="mapCanvas"></canvas>
+<script>
+// ─── Data ──────────────────────────────────────────────
+let data = {id:'r',label:'📄 Source',children:[],x:0,y:0,expanded:true};
+let sel=null, nid=1, mode='2d';
+
+// ─── Canvas ────────────────────────────────────────────
+const c=document.getElementById('canvas'), cx=c.getContext('2d');
+let off={x:0,y:0}, drag=null, zm=1;
+
+function resize(){c.width=window.innerWidth; c.height=window.innerHeight-50;}
+window.addEventListener('resize',resize); resize();
+
+// ─── Render ────────────────────────────────────────────
+function render(){
+  cx.clearRect(0,0,c.width,c.height);
+  draw(data,c.width/2+off.x,70+off.y,0);
+}
+
+function draw(n,x,y,lv){
+  const w=Math.max(80,n.label.length*9+20), h=32;
+  const s=n.id===sel, ch=n.children&&n.children.length>0;
   
-  <!-- 3D Container -->
-  <div id="threeContainer"></div>
-
-  <!-- Input Panel -->
-  <div id="inputPanel">
-    <textarea id="inputText" placeholder="Paste text to auto-generate a mind map...">Elon Musk founded Tesla and SpaceX. Tesla launched Model 3. SpaceX developed Starship.</textarea>
-    <button onclick="generateFromInput()">🚀 Generate</button>
-  </div>
-
-  <!-- Node Editor -->
-  <div id="nodeEditor">
-    <input id="nodeEditorInput" placeholder="Node label..." maxlength="30">
-    <div class="actions">
-      <button class="save" onclick="saveNodeEdit()">Save</button>
-      <button class="add-child" onclick="addChildFromEditor()">+ Child</button>
-      <button class="delete" onclick="deleteNodeEdit()">Delete</button>
-    </div>
-  </div>
-
-  <!-- Export Modal -->
-  <div id="exportModal">
-    <div class="modal">
-      <h3>📥 Export Mind Map</h3>
-      <div class="formats" id="exportFormats">
-        <div class="format-btn active" data-format="png" onclick="selectFormat('png')">🖼️ PNG Image</div>
-        <div class="format-btn" data-format="jpg" onclick="selectFormat('jpg')">🖼️ JPG Image</div>
-        <div class="format-btn" data-format="pdf" onclick="selectFormat('pdf')">📄 PDF Document</div>
-        <div class="format-btn" data-format="docx" onclick="selectFormat('docx')">📝 Word Document</div>
-      </div>
-      <div class="export-actions">
-        <button class="do-export" onclick="doExport()">Download</button>
-        <button class="cancel" onclick="hideExportModal()">Cancel</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="tagline">Mind-Galaxy by JCS Labs</div>
-
-  <script>
-    // ─── Tree Data ──────────────────────────────────────────
-    let treeData = { id: 'root', label: '📄 Source', children: [], x: 0, y: 0 };
-    let selectedNodeId = null;
-    let nodeIdCounter = 1;
-    let viewMode = '2d'; // '2d' or '3d'
-    let threeJsLoaded = false;
-    
-    // ─── Canvas Setup ───────────────────────────────────────
-    const canvas = document.getElementById('mapCanvas');
-    const ctx = canvas.getContext('2d');
-    let canvasOffset = { x: 0, y: 0 };
-    let isDragging = false;
-    let dragStart = null;
-    let scale = 1;
-    
-    function resizeCanvas() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight - 50;
-    }
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
-    
-    // ─── Tree Rendering ─────────────────────────────────────
-    function renderTree() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      const rootX = canvas.width / 2 + canvasOffset.x;
-      const rootY = 60 + canvasOffset.y;
-      
-      drawNode(treeData, rootX, rootY, 0, 0);
-    }
-    
-    function drawNode(node, x, y, level, index) {
-      const isSelected = node.id === selectedNodeId;
-      const nodeW = Math.max(80, node.label.length * 9 + 20);
-      const nodeH = 32;
-      const hasChildren = node.children && node.children.length > 0;
-      
-      // Draw node background
-      const grad = ctx.createRadialGradient(x, y, 0, x, y, nodeH);
-      grad.addColorStop(0, isSelected ? '#7c3aed' : '#1e293b');
-      grad.addColorStop(1, isSelected ? '#6d28d9' : '#0f172a');
-      
-      ctx.shadowColor = isSelected ? 'rgba(124,58,237,0.4)' : 'rgba(0,0,0,0.3)';
-      ctx.shadowBlur = isSelected ? 15 : 5;
-      
-      ctx.beginPath();
-      ctx.roundRect(x - nodeW/2, y - nodeH/2, nodeW, nodeH, 8);
-      ctx.fillStyle = grad;
-      ctx.fill();
-      ctx.strokeStyle = isSelected ? '#a78bfa' : '#334155';
-      ctx.lineWidth = isSelected ? 2 : 1;
-      ctx.stroke();
-      
-      ctx.shadowBlur = 0;
-      
-      // Draw label
-      ctx.fillStyle = '#e2e8f0';
-      ctx.font = '13px Inter, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(node.label, x, y);
-      
-      // Draw expand/collapse indicator
-      if (hasChildren) {
-        ctx.fillStyle = '#64748b';
-        ctx.font = '10px sans-serif';
-        ctx.fillText(node.expanded ? '−' : '+', x + nodeW/2 - 5, y);
+  // shadow
+  cx.shadowColor=s?'rgba(124,58,237,0.4)':'rgba(0,0,0,0.3)';
+  cx.shadowBlur=s?15:5;
+  
+  // bg
+  cx.beginPath();
+  cx.roundRect(x-w/2,y-h/2,w,h,8);
+  const g=cx.createRadialGradient(x,y,0,x,y,h);
+  g.addColorStop(0,s?'#7c3aed':'#1e293b');
+  g.addColorStop(1,s?'#6d28d9':'#0f172a');
+  cx.fillStyle=g; cx.fill();
+  cx.strokeStyle=s?'#a78bfa':'#334155';
+  cx.lineWidth=s?2:1; cx.stroke();
+  cx.shadowBlur=0;
+  
+  // label
+  cx.fillStyle='#e2e8f0';
+  cx.font='13px Inter,sans-serif';
+  cx.textAlign='center'; cx.textBaseline='middle';
+  cx.fillText(n.label,x,y);
+  
+  // +/- indicator
+  if(ch){
+    cx.fillStyle='#64748b'; cx.font='11px sans-serif';
+    cx.fillText(n.expanded===false?'+':'−',x+w/2-6,y);
+  }
+  
+  // children
+  if(ch&&n.expanded!==false){
+    const sp=Math.min(120,400/(n.children.length+1));
+    const th=(n.children.length-1)*sp;
+    const fy=y+60-th/2;
+    n.children.forEach((cld,i)=>{
+      const cy=fy+i*sp, cx2=x+180;
+      // line
+      cx.beginPath();
+      cx.moveTo(x+w/2,y); cx.lineTo(cx2-40,y);
+      cx.lineTo(cx2-40,cy); cx.lineTo(cx2-w/2,cy);
+      cx.strokeStyle='rgba(124,58,237,0.3)'; cx.lineWidth=1.5; cx.stroke();
+      // relation
+      if(cld.rel){
+        cx.fillStyle='#a78bfa'; cx.font='9px sans-serif';
+        cx.textAlign='center'; cx.fillText(cld.rel,x+w/2+90,(y+cy)/2-5);
       }
-      
-      // Draw children
-      if (hasChildren && node.expanded !== false) {
-        const childSpacing = Math.min(120, 400 / (node.children.length + 1));
-        const startY = y + 60;
-        const totalH = (node.children.length - 1) * childSpacing;
-        const firstY = y + 60 - totalH / 2;
-        
-        node.children.forEach((child, i) => {
-          const childY = firstY + i * childSpacing;
-          const childX = x + 180;
-          
-          // Draw connection line
-          ctx.beginPath();
-          ctx.moveTo(x + nodeW/2, y);
-          ctx.lineTo(childX - 40, y);
-          ctx.lineTo(childX - 40, childY);
-          ctx.lineTo(childX - nodeW/2, childY);
-          ctx.strokeStyle = 'rgba(124,58,237,0.3)';
-          ctx.lineWidth = 1.5;
-          ctx.stroke();
-          
-          // Draw relation label if exists
-          if (child.relation) {
-            ctx.fillStyle = '#a78bfa';
-            ctx.font = '9px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText(child.relation, x + nodeW/2 + 90, (y + childY) / 2 - 5);
-          }
-          
-          drawNode(child, childX, childY, level + 1, i);
-        });
-      }
-    }
-    
-    // ─── Interaction ────────────────────────────────────────
-    let hoveredNode = null;
-    
-    canvas.addEventListener('mousedown', (e) => {
-      const rect = canvas.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
-      
-      const hit = hitTest(treeData, mx, my, canvas.width / 2 + canvasOffset.x, 60 + canvasOffset.y, 0);
-      
-      if (hit) {
-        selectedNodeId = hit.id;
-        renderTree();
-        showNodeEditor(hit, e.clientX, e.clientY);
-      } else {
-        selectedNodeId = null;
-        hideNodeEditor();
-        isDragging = true;
-        dragStart = { x: e.clientX, y: e.clientY };
-        renderTree();
-      }
+      draw(cld,cx2,cy,lv+1);
     });
+  }
+}
+
+// ─── Hit Test ──────────────────────────────────────────
+function hit(n,mx,my,x,y){
+  const w=Math.max(80,n.label.length*9+20),h=32;
+  if(mx>=x-w/2&&mx<=x+w/2&&my>=y-h/2&&my<=y+h/2) return n;
+  if(n.children&&n.expanded!==false){
+    const sp=Math.min(120,400/(n.children.length+1));
+    const th=(n.children.length-1)*sp;
+    const fy=y+60-th/2;
+    for(let i=0;i<n.children.length;i++){
+      const r=hit(n.children[i],mx,my,x+180,fy+i*sp);
+      if(r) return r;
+    }
+  }
+  return null;
+}
+
+// ─── Interaction ───────────────────────────────────────
+c.addEventListener('mousedown',e=>{
+  const r=c.getBoundingClientRect();
+  const mx=e.clientX-r.left, my=e.clientY-r.top;
+  const h=hit(data,mx,my,c.width/2+off.x,70+off.y);
+  if(h){ sel=h.id; render(); showEditor(h,e.clientX,e.clientY); }
+  else{ sel=null; hideEditor(); drag={x:e.clientX,y:e.clientY}; render(); }
+});
+
+c.addEventListener('mousemove',e=>{
+  if(drag){ off.x+=(e.clientX-drag.x)*0.8; off.y+=(e.clientY-drag.y)*0.8; drag={x:e.clientX,y:e.clientY}; render(); }
+});
+
+c.addEventListener('mouseup',()=>{drag=null;});
+c.addEventListener('mouseleave',()=>{drag=null;});
+
+c.addEventListener('dblclick',e=>{
+  const r=c.getBoundingClientRect();
+  const mx=e.clientX-r.left, my=e.clientY-r.top;
+  const h=hit(data,mx,my,c.width/2+off.x,70+off.y);
+  if(h&&h.children&&h.children.length>0){
+    h.expanded=h.expanded===false?true:false; render();
+  }
+});
+
+// ─── Editor ────────────────────────────────────────────
+function showEditor(n,cx,cy){
+  const ed=document.getElementById('editor');
+  document.getElementById('edInput').value=n.label;
+  ed.style.display='block';
+  ed.style.left=Math.min(cx,window.innerWidth-240)+'px';
+  ed.style.top=Math.min(cy,window.innerHeight-180)+'px';
+  ed.dataset.id=n.id;
+  document.getElementById('edInput').focus();
+  document.getElementById('edInput').select();
+}
+function hideEditor(){document.getElementById('editor').style.display='none';}
+function find(id,n){if(n.id===id)return n;if(n.children)for(const c of n.children){const r=find(id,c);if(r)return r;}return null;}
+function parent(id,n){if(n.children)for(const c of n.children){if(c.id===id)return n;const r=parent(id,c);if(r)return r;}return null;}
+
+window.saveEdit=function(){
+  const id=document.getElementById('editor').dataset.id;
+  const lbl=document.getElementById('edInput').value.trim();
+  if(!lbl)return;
+  const n=find(id,data); if(n){n.label=lbl;render();trackEvent('edit',{tool:'mg'});}
+  hideEditor();
+};
+window.addChild=function(){
+  const id=document.getElementById('editor').dataset.id;
+  const n=find(id,data); if(n){nid++;if(!n.children)n.children=[];n.children.push({id:'n'+nid,label:'New',children:[],expanded:true});n.expanded=true;render();trackEvent('add',{tool:'mg'});}
+  hideEditor();
+};
+window.delEdit=function(){
+  const id=document.getElementById('editor').dataset.id;
+  if(id==='r')return;
+  const p=parent(id,data); if(p){p.children=p.children.filter(c=>c.id!==id);render();trackEvent('del',{tool:'mg'});}
+  hideEditor();
+};
+
+// ─── Generate ──────────────────────────────────────────
+window.generate=function(){
+  const txt=document.getElementById('txt').value.trim();
+  if(!txt)return;
+  const sents=txt.split(/[。！？\n.!?]+/).filter(s=>s.trim().length>3);
+  data={id:'r',label:'📄 Source',children:[],x:0,y:0,expanded:true};
+  nid=0;
+  
+  const verbs=['founded','created','launched','developed','built','acquired','invested','partnered','announced','released','introduced','unveiled','published','discovered','invented','designed','led','managed','started','ended','won','lost','beat','joined','left','hired','fired','approved','rejected','proposed'];
+  const cn=['发布','推出','收购','投资','合作','竞争','宣布','创建','发明','发现','开发','设计','领导','管理','开始','结束','打败','赢得','加入','离开','任命','开除','批准','拒绝','提出'];
+  
+  for(const s of sents){
+    const t=s.trim();
+    // Try to segment Chinese by known entities
+    let words=t.split(/[\s,，、]+/).filter(w=>w.length>0);
+    if(words.length<=2&&/[\u4e00-\u9fff]/.test(t)){
+      words=t.match(/[\u4e00-\u9fff]{2,4}/g)||[];
+    }
     
-    canvas.addEventListener('mousemove', (e) => {
-      if (isDragging && dragStart) {
-        canvasOffset.x += (e.clientX - dragStart.x) * 0.5;
-        canvasOffset.y += (e.clientY - dragStart.y) * 0.5;
-        dragStart = { x: e.clientX, y: e.clientY };
-        renderTree();
+    let vi=-1,vw=null;
+    for(let i=0;i<words.length;i++){
+      const w=words[i].toLowerCase().replace(/[^a-z\u4e00-\u9fff]/g,'');
+      if(verbs.includes(w)||cn.includes(w)){vi=i;vw=words[i];break;}
+    }
+    
+    if(vi>0&&vi<words.length-1&&vw){
+      const subj=words.slice(0,vi).join(' ').replace(/[^a-zA-Z\u4e00-\u9fff\s]/g,'').trim();
+      const obj=words.slice(vi+1).join(' ').replace(/[^a-zA-Z\u4e00-\u9fff\s]/g,'').trim();
+      if(subj&&obj&&subj.length>1&&obj.length>1){
+        let sn=data.children.find(c=>c.label.toLowerCase()===subj.toLowerCase());
+        if(!sn){nid++;sn={id:'n'+nid,label:subj,children:[],expanded:true};data.children.push(sn);}
+        nid++;sn.children.push({id:'n'+nid,label:obj,children:[],expanded:true,rel:vw});
       }
-    });
-    
-    canvas.addEventListener('mouseup', () => {
-      isDragging = false;
-      dragStart = null;
-    });
-    
-    canvas.addEventListener('dblclick', (e) => {
-      const rect = canvas.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
-      const hit = hitTest(treeData, mx, my, canvas.width / 2 + canvasOffset.x, 60 + canvasOffset.y, 0);
-      
-      if (hit && hit.children && hit.children.length > 0) {
-        hit.expanded = hit.expanded === false ? true : false;
-        renderTree();
-      }
-    });
-    
-    function hitTest(node, mx, my, x, y, level) {
-      const nodeW = Math.max(80, node.label.length * 9 + 20);
-      const nodeH = 32;
-      
-      if (mx >= x - nodeW/2 && mx <= x + nodeW/2 && my >= y - nodeH/2 && my <= y + nodeH/2) {
-        return node;
-      }
-      
-      if (node.children && node.expanded !== false) {
-        const childSpacing = Math.min(120, 400 / (node.children.length + 1));
-        const totalH = (node.children.length - 1) * childSpacing;
-        const firstY = y + 60 - totalH / 2;
-        
-        for (let i = 0; i < node.children.length; i++) {
-          const child = node.children[i];
-          const childY = firstY + i * childSpacing;
-          const childX = x + 180;
-          const result = hitTest(child, mx, my, childX, childY, level + 1);
-          if (result) return result;
+    }else{
+      const ents=t.match(/\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)*/g)||[];
+      if(ents.length>0){
+        let mn=data.children.find(c=>c.label===ents[0]);
+        if(!mn){nid++;mn={id:'n'+nid,label:ents[0],children:[],expanded:true};data.children.push(mn);}
+        for(let j=1;j<ents.length;j++){
+          nid++;mn.children.push({id:'n'+nid,label:ents[j],children:[],expanded:true,rel:'related'});
         }
       }
-      
-      return null;
     }
-    
-    // ─── Node Editor ────────────────────────────────────────
-    function showNodeEditor(node, cx, cy) {
-      const editor = document.getElementById('nodeEditor');
-      document.getElementById('nodeEditorInput').value = node.label;
-      editor.style.display = 'block';
-      editor.style.left = Math.min(cx, window.innerWidth - 240) + 'px';
-      editor.style.top = Math.min(cy, window.innerHeight - 180) + 'px';
-      editor.dataset.nodeId = node.id;
-      document.getElementById('nodeEditorInput').focus();
-      document.getElementById('nodeEditorInput').select();
-    }
-    
-    function hideNodeEditor() {
-      document.getElementById('nodeEditor').style.display = 'none';
-    }
-    
-    function findNode(id, node) {
-      if (node.id === id) return node;
-      if (node.children) {
-        for (const child of node.children) {
-          const result = findNode(id, child);
-          if (result) return result;
-        }
-      }
-      return null;
-    }
-    
-    function findParent(id, node) {
-      if (node.children) {
-        for (const child of node.children) {
-          if (child.id === id) return node;
-          const result = findParent(id, child);
-          if (result) return result;
-        }
-      }
-      return null;
-    }
-    
-    window.saveNodeEdit = function() {
-      const id = document.getElementById('nodeEditor').dataset.nodeId;
-      const label = document.getElementById('nodeEditorInput').value.trim();
-      if (!label) return;
-      const node = findNode(id, treeData);
-      if (node) {
-        node.label = label;
-        renderTree();
-        trackEvent('edit_node', { tool: 'mindgalaxy' });
-      }
-      hideNodeEditor();
-    };
-    
-    window.addChildFromEditor = function() {
-      const id = document.getElementById('nodeEditor').dataset.nodeId;
-      const node = findNode(id, treeData);
-      if (node) {
-        nodeIdCounter++;
-        if (!node.children) node.children = [];
-        node.children.push({ id: 'n' + nodeIdCounter, label: 'New Node', children: [], expanded: true });
-        node.expanded = true;
-        renderTree();
-        trackEvent('add_child', { tool: 'mindgalaxy' });
-      }
-      hideNodeEditor();
-    };
-    
-    window.deleteNodeEdit = function() {
-      const id = document.getElementById('nodeEditor').dataset.nodeId;
-      if (id === 'root') return;
-      const parent = findParent(id, treeData);
-      if (parent) {
-        parent.children = parent.children.filter(c => c.id !== id);
-        renderTree();
-        trackEvent('delete_node', { tool: 'mindgalaxy' });
-      }
-      hideNodeEditor();
-    };
-    
-    // ─── Toolbar Actions ────────────────────────────────────
-    window.addRootChild = function() {
-      nodeIdCounter++;
-      if (!treeData.children) treeData.children = [];
-      treeData.children.push({ id: 'n' + nodeIdCounter, label: 'New Node', children: [], expanded: true });
-      treeData.expanded = true;
-      renderTree();
-      trackEvent('add_root_child', { tool: 'mindgalaxy' });
-    };
-    
-    window.deleteSelected = function() {
-      if (!selectedNodeId || selectedNodeId === 'root') return;
-      const parent = findParent(selectedNodeId, treeData);
-      if (parent) {
-        parent.children = parent.children.filter(c => c.id !== selectedNodeId);
-        selectedNodeId = null;
-        hideNodeEditor();
-        renderTree();
-        trackEvent('delete_selected', { tool: 'mindgalaxy' });
-      }
-    };
-    
-    window.collapseAll = function() {
-      function collapse(node) {
-        if (node.children && node.children.length > 0) {
-          node.expanded = false;
-          node.children.forEach(collapse);
-        }
-      }
-      treeData.expanded = true;
-      treeData.children.forEach(collapse);
-      renderTree();
-    };
-    
-    window.expandAll = function() {
-      function expand(node) {
-        node.expanded = true;
-        if (node.children) node.children.forEach(expand);
-      }
-      expand(treeData);
-      renderTree();
-    };
-    
-    // ─── Export ─────────────────────────────────────────────
-    let exportFormat = 'png';
-    
-    window.showExportModal = function() {
-      document.getElementById('exportModal').classList.add('show');
-    };
-    window.hideExportModal = function() {
-      document.getElementById('exportModal').classList.remove('show');
-    };
-    window.selectFormat = function(fmt) {
-      exportFormat = fmt;
-      document.querySelectorAll('.format-btn').forEach(b => b.classList.toggle('active', b.dataset.format === fmt));
-    };
-    
-    window.doExport = function() {
-      hideExportModal();
-      
-      if (exportFormat === 'png') {
-        const link = document.createElement('a');
-        link.download = 'mind-galaxy.png';
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-      } else if (exportFormat === 'jpg') {
-        const link = document.createElement('a');
-        link.download = 'mind-galaxy.jpg';
-        link.href = canvas.toDataURL('image/jpeg', 0.95);
-        link.click();
-      } else if (exportFormat === 'pdf') {
-        exportPDF();
-      } else if (exportFormat === 'docx') {
-        exportDocx();
-      }
-      trackEvent('export_' + exportFormat, { tool: 'mindgalaxy' });
-    };
-    
-    function exportPDF() {
-      // Use canvas to PDF via window print or jsPDF
-      const imgData = canvas.toDataURL('image/png');
-      const win = window.open('', '_blank');
-      win.document.write(`
-        <html><head><title>Mind-Galaxy</title>
-        <style>body{margin:0;display:flex;justify-content:center;align-items:center;height:100vh;}img{max-width:100%;max-height:100%;}</style>
-        </head><body><img src="${imgData}" onload="window.print()"></body></html>
-      `);
-      win.document.close();
-    }
-    
-    function exportDocx() {
-      // Generate DOCX using a simple HTML-to-DOCX approach
-      const treeText = flattenTree(treeData, 0);
-      const html = `<html xmlns:o='urn:schemas-microsoft-com:office:office' 
-        xmlns:w='urn:schemas-microsoft-com:office:word' 
-        xmlns='http://www.w3.org/TR/REC-html40'>
-        <head><meta charset="utf-8"><title>Mind-Galaxy</title>
-        <style>body{font-family:Inter,sans-serif;padding:20px;}
-        h1{color:#7c3aed;font-size:18px;}
-        .level0{margin-left:0;font-weight:bold;font-size:16px;margin-top:16px;}
-        .level1{margin-left:24px;font-size:14px;margin-top:8px;}
-        .level2{margin-left:48px;font-size:13px;margin-top:4px;color:#555;}
-        .level3{margin-left:72px;font-size:12px;margin-top:4px;color:#777;}
-        .rel{color:#7c3aed;font-size:11px;margin-left:24px;}
-        </style></head><body>
-        <h1>🌌 Mind-Galaxy Mind Map</h1>
-        ${treeText}
-        <p style="margin-top:40px;color:#999;font-size:10px;">Generated by Mind-Galaxy</p>
-        </body></html>`;
-      
-      const blob = new Blob([html], { type: 'application/msword' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.download = 'mind-galaxy.doc';
-      link.href = url;
-      link.click();
-      URL.revokeObjectURL(url);
-    }
-    
-    function flattenTree(node, level) {
-      if (!node || node.id === 'root' && level === 0) {
-        let html = '';
-        if (node.children) {
-          node.children.forEach(child => {
-            html += flattenTree(child, level + 1);
-          });
-        }
-        return html;
-      }
-      
-      let html = `<div class="level${Math.min(level, 3)}">• ${node.label}</div>`;
-      if (node.relation) {
-        html += `<div class="rel">↳ ${node.relation}</div>`;
-      }
-      if (node.children && node.expanded !== false) {
-        node.children.forEach(child => {
-          html += flattenTree(child, level + 1);
-        });
-      }
-      return html;
-    }
-    
-    window.exportImage = function() {
-      showExportModal();
-    };
-    
-    // ─── AI Generation ──────────────────────────────────────
-    window.generateFromInput = function() {
-      const text = document.getElementById('inputText').value.trim();
-      if (!text) return;
-      
-      // Simple tree generator from text
-      const sentences = text.split(/[。！？\n.!?]+/).filter(s => s.trim().length > 5);
-      
-      // Reset tree
-      treeData = { id: 'root', label: '📄 Source', children: [], x: 0, y: 0, expanded: true };
-      nodeIdCounter = 0;
-      
-      const actionVerbs = ['founded','created','launched','developed','built','acquired','invested','partnered','announced','released','introduced','unveiled','published','discovered','invented','designed','led','managed','started','ended','won','lost','beat','joined','left','hired','fired','approved','rejected','proposed','announced'];
-      
-      const cnVerbs = ['发布','推出','收购','投资','合作','竞争','宣布','创建','发明','发现','开发','设计','领导','管理','开始','结束','打败','赢得','加入','离开','任命','开除','批准','拒绝','提出'];
-      
-      for (const sentence of sentences) {
-        // Try to find verb and split into subject/verb/object
-        const trimmed = sentence.trim();
-        const words = trimmed.split(/[\s,，、]+/).filter(w => w.length > 0);
-        
-        let foundVerb = null;
-        let verbIdx = -1;
-        
-        for (let i = 0; i < words.length; i++) {
-          const w = words[i].toLowerCase().replace(/[^a-zA-Z\u4e00-\u9fff]/g, '');
-          if (actionVerbs.includes(w) || cnVerbs.includes(w)) {
-            foundVerb = w;
-            verbIdx = i;
-            break;
-          }
-        }
-        
-        if (foundVerb !== null && verbIdx > 0 && verbIdx < words.length - 1) {
-          const subj = words.slice(0, verbIdx).join(' ').replace(/[^a-zA-Z\u4e00-\u9fff\s]/g, '').trim();
-          const obj = words.slice(verbIdx + 1).join(' ').replace(/[^a-zA-Z\u4e00-\u9fff\s]/g, '').trim();
-          
-          if (subj && obj) {
-            // Find or create subject node
-            let subjNode = treeData.children.find(c => c.label.toLowerCase() === subj.toLowerCase());
-            if (!subjNode) {
-              nodeIdCounter++;
-              subjNode = { id: 'n' + nodeIdCounter, label: subj, children: [], expanded: true };
-              treeData.children.push(subjNode);
-            }
-            
-            // Create object node as child of subject
-            nodeIdCounter++;
-            subjNode.children.push({ 
-              id: 'n' + nodeIdCounter, 
-              label: obj, 
-              children: [], 
-              expanded: true,
-              relation: foundVerb
-            });
-          }
-        } else {
-          // No verb found — use first capitalized words as entities
-          const entities = trimmed.match(/\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)*/g) || [];
-          if (entities.length > 0) {
-            const mainEntity = entities[0];
-            let entityNode = treeData.children.find(c => c.label === mainEntity);
-            if (!entityNode) {
-              nodeIdCounter++;
-              entityNode = { id: 'n' + nodeIdCounter, label: mainEntity, children: [], expanded: true };
-              treeData.children.push(entityNode);
-            }
-            for (let j = 1; j < entities.length; j++) {
-              nodeIdCounter++;
-              entityNode.children.push({ id: 'n' + nodeIdCounter, label: entities[j], children: [], expanded: true, relation: 'related' });
-            }
-          }
-        }
-      }
-      
-      renderTree();
-      trackEvent('generate_tree', { tool: 'mindgalaxy' });
-    };
-    
-    // ─── View Toggle ────────────────────────────────────────
-    window.toggleView = function() {
-      if (viewMode === '2d') {
-        viewMode = '3d';
-        canvas.style.display = 'none';
-        document.getElementById('threeContainer').style.display = 'block';
-        document.getElementById('viewToggle').textContent = '🌲 Tree View';
-        document.getElementById('viewToggle').classList.add('active');
-        loadThreeView();
-      } else {
-        viewMode = '2d';
-        canvas.style.display = 'block';
-        document.getElementById('threeContainer').style.display = 'none';
-        document.getElementById('viewToggle').textContent = '🌐 3D View';
-        document.getElementById('viewToggle').classList.remove('active');
-      }
-    };
-    
-    function loadThreeView() {
-      // Load Three.js dynamically
-      const container = document.getElementById('threeContainer');
-      container.innerHTML = '<iframe src="/index-3d-backup.html" style="width:100%;height:100%;border:none;"></iframe>';
-    }
-    
-    // ─── Keyboard Shortcuts ─────────────────────────────────
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') hideNodeEditor();
-      if (e.key === 'Enter' && document.getElementById('nodeEditor').style.display === 'block') {
-        saveNodeEdit();
-      }
-      if (e.key === 'Tab') {
-        e.preventDefault();
-        // Indent/outdent could be added
-      }
-    });
-    
-    // ─── Init ───────────────────────────────────────────────
-    renderTree();
-  </script>
+  }
+  render();
+  trackEvent('gen',{tool:'mg'});
+};
+
+// ─── Export ────────────────────────────────────────────
+let fmt='png';
+window.showExport=function(){document.getElementById('exportModal').classList.add('on');};
+window.hideExport=function(){document.getElementById('exportModal').classList.remove('on');};
+window.selFmt=function(f){fmt=f;document.querySelectorAll('.fb').forEach(b=>b.classList.toggle('on',b.dataset.f===f));};
+document.getElementById('exportModal').addEventListener('click',e=>{if(e.target.id==='exportModal')hideExport();});
+
+window.doExport=function(){
+  hideExport();
+  if(fmt==='png'){const a=document.createElement('a');a.download='mind-galaxy.png';a.href=c.toDataURL('image/png');a.click();}
+  else if(fmt==='jpg'){const a=document.createElement('a');a.download='mind-galaxy.jpg';a.href=c.toDataURL('image/jpeg',0.95);a.click();}
+  else if(fmt==='pdf'){const d=c.toDataURL('image/png');const w=window.open('','_blank');w.document.write(\`<html><head><title>Mind-Galaxy</title><style>body{margin:0;display:flex;justify-content:center;align-items:center;height:100vh;}img{max-width:100%;max-height:100%;}</style></head><body><img src="\${d}" onload="window.print()"></body></html>\`);w.document.close();}
+  else if(fmt==='docx'){const html=flatten(data,0);const h=\`<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset="utf-8"><title>Mind-Galaxy</title><style>body{font-family:Inter,sans-serif;padding:20px;}h1{color:#7c3aed;font-size:18px;}.l0{margin-left:0;font-weight:bold;font-size:16px;margin-top:16px;}.l1{margin-left:24px;font-size:14px;margin-top:8px;}.l2{margin-left:48px;font-size:13px;margin-top:4px;color:#555;}.l3{margin-left:72px;font-size:12px;margin-top:4px;color:#777;}.r{color:#7c3aed;font-size:11px;margin-left:24px;}</style></head><body><h1>🌌 Mind-Galaxy Mind Map</h1>\${html}<p style="margin-top:40px;color:#999;font-size:10px;">Generated by Mind-Galaxy</p></body></html>\`;const b=new Blob([h],{type:'application/msword'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.download='mind-galaxy.doc';a.href=u;a.click();URL.revokeObjectURL(u);}
+  trackEvent('exp_'+fmt,{tool:'mg'});
+};
+
+function flatten(n,lv){
+  if(!n||n.id==='r'&&lv===0){let h='';if(n.children)n.children.forEach(c=>h+=flatten(c,lv+1));return h;}
+  let h=\`<div class="l\${Math.min(lv,3)}">• \${n.label}</div>\`;
+  if(n.rel)h+=\`<div class="r">↳ \${n.rel}</div>\`;
+  if(n.children&&n.expanded!==false)n.children.forEach(c=>h+=flatten(c,lv+1));
+  return h;
+}
+
+// ─── 3D View ────────────────────────────────────────────
+window.toggleView=function(){
+  if(mode==='2d'){
+    mode='3d';c.style.display='none';
+    document.getElementById('vbtn').textContent='🌲 2D';
+    document.getElementById('vbtn').classList.add('on');
+    // Load 3D version in new tab for now
+    window.open('/index-3d-backup.html','_blank');
+    mode='2d';c.style.display='block';
+    document.getElementById('vbtn').textContent='🌐 3D';
+    document.getElementById('vbtn').classList.remove('on');
+  }
+};
+
+// ─── Keyboard ──────────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape')hideEditor();
+  if(e.key==='Enter'&&document.getElementById('editor').style.display==='block')saveEdit();
+});
+
+// ─── Init ──────────────────────────────────────────────
+render();
+</script>
 </body>
 </html>
